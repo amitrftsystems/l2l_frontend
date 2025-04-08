@@ -1,0 +1,234 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPERADMIN
+  ADMIN
+  EMPLOYEE
+}
+
+model User {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  email     String   @unique
+  password  String
+  role      Role
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  createdBy    User?   @relation("CreatedUsers", fields: [createdById], references: [id])
+  createdById  String?
+  createdUsers User[]  @relation("CreatedUsers")
+} 
+
+model Booking {
+   booking_id      Int      @id @default(autoincrement())
+  customer_id     String   @db.VarChar(50)
+  booking_date    DateTime @default(now())
+  name            String   @db.VarChar(255)
+  address         String   @db.Text
+  property_id     Int
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+  customer        Customer @relation(fields: [customer_id], references: [customer_id], onDelete: Cascade)
+  property        Property @relation(fields: [property_id], references: [property_id], onDelete: Cascade)
+
+  @@index([property_id])
+  @@index([customer_id])
+}
+
+model Broker {
+  broker_id       Int      @id @default(autoincrement())
+  project_id      Int
+  code            Int
+  name            String
+  address         String
+  mobile          String?
+  email           String?
+  phone           String?
+  fax             String?
+  income_tax_ward_no String?
+  dist_no         String?
+  pan_no          String?
+  net_commission_rate Float  @default(0.0)
+  project         Project  @relation(fields: [project_id], references: [project_id])
+  customers       Customer[]
+}
+
+model CoApplicant {
+  co_applicant_id Int      @id @default(autoincrement())
+  customer_id     String
+  is_applicant    Boolean  @default(false)
+  name            String
+  guardian_name   String?
+  address         String
+  mobile          String?  @unique
+  email           String?  @unique
+  phone           String?
+  fax             String?
+  occupation      String?
+  income_tax_ward_no String?
+  dist_no         String?
+  pan_no          String?  @unique
+  dob             DateTime?
+  nationality     String   @default("Resident Indian")
+  customer        Customer @relation(fields: [customer_id], references: [customer_id])
+}
+
+model Customer {
+  customer_id          String        @id
+  project_id          Int
+  broker_id           Int?
+  property_type       String?
+  booking_receipt_no  String?
+  name                String
+  father_husband_name String?
+  grandfather_name    String?
+  allottee_dob        DateTime?     @map("dob")
+  permanent_address   String
+  full_postal_address String?
+  city                String?
+  state               String?
+  pincode             String?
+  country             String        @default("India")
+  email               String?       @unique
+  mobile              String        @unique
+  std_isd_code        String?
+  phone               String?
+  fax                 String?
+  income_tax_ward_no  String?
+  dist_no             String?
+  pan_no              String?       @unique
+  aadhar_no           String?       @unique
+  gstin               String?
+  paid_100_percent    Boolean       @default(false)
+  nominee_name        String?
+  nominee_address     String?
+  created_at          DateTime      @default(now())
+  updated_at          DateTime      @updatedAt
+  co_applicants       CoApplicant[]
+  properties          Property[]
+  registration_forms  RegistrationForm[]
+  bookings           Booking[]
+  project            Project       @relation(fields: [project_id], references: [project_id])
+  broker             Broker?       @relation(fields: [broker_id], references: [broker_id])
+
+  @@index([project_id])
+  @@index([broker_id])
+}
+
+model InstallmentPlan {
+  installment_no  String    @id
+  due_days        Int?
+  due_date        DateTime? 
+  percentage      Float?
+  lumpsum_amount  Float?
+  remarks         String?
+  created_at      DateTime  @default(now())
+  projects        Project[]
+}
+
+model LeanBank {
+  id              Int      @id @default(autoincrement())
+  bank_name       String
+  ifsc_code       String   @unique
+  bank_branch     String
+  created_at      DateTime @default(now())
+}
+
+model Plc {
+  plc_id          Int      @id @default(autoincrement())
+  plc_name        String   @unique
+  value           Float
+  is_percentage   Boolean  @default(false)
+  remarks         String?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @default(now())
+}
+
+model Project {
+  project_id      Int             @id @default(autoincrement())
+  project_name    String          
+  company_name    String
+  address         String
+  landmark        String?
+  plan            String
+  size            Int?
+  sign_image_name String
+  created_at      DateTime        @default(now())
+  installment_plan InstallmentPlan @relation(fields: [plan], references: [installment_no])
+  brokers         Broker[]
+  stocks          Stock[]
+  registration_forms RegistrationForm[]
+  customers       Customer[]
+}
+
+model Property {
+  property_id     Int       @id @default(autoincrement())
+  customer_id     String?
+  property_type   String?
+  size            Int
+  allotment_date  DateTime?
+  remark          String?
+  customer        Customer? @relation(fields: [customer_id], references: [customer_id], onDelete: SetNull)
+  bookings        Booking[]
+  stocks          Stock[]
+}
+
+model RegistrationForm {
+  id              Int      @id @default(autoincrement())
+  customer_id     String
+  project_id      Int
+  unit_id         String
+  manual_application_number String? @unique
+  booking_receipt_number String?
+  name            String
+  father_name     String?
+  grandfather_name String?
+  dob             DateTime?
+  address1        String
+  address2        String?
+  state           String
+  pincode         String
+  country         String   @default("India")
+  email           String
+  phone           String
+  fax             String?
+  std_code        String?
+  tax_ward_no     String?
+  dist_no         String?
+  pan_no          String?  @unique
+  aadhar_no       String?
+  gstin           String?
+  agent_name      String?
+  nominee_name    String?
+  nominee_address String?
+  created_at      DateTime @default(now())
+  customer        Customer @relation(fields: [customer_id], references: [customer_id])
+  project         Project  @relation(fields: [project_id], references: [project_id])
+}
+
+model Stock {
+  stock_id        Int      @id @default(autoincrement())
+  project_id      Int
+  property_id     Int
+  property_type   String?
+  size            Int?
+  bsp             Float?
+  broker_id       Int?
+  remarks         String?
+  on_hold_status  String?
+  hold_till_date  DateTime?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @default(now())
+  project         Project  @relation(fields: [project_id], references: [project_id])
+  property        Property @relation(fields: [property_id], references: [property_id])
+}
