@@ -269,7 +269,7 @@ export default function Navbar() {
                 {[
                   { name: "Manage Employees", link: "/utilities/manage-employees" },
                   { name: "Add New Property", link: "/List-your-property" },
-                  { name: "Allotment Letter", link: "#plc" },
+                  { name: "Allotment Letter", link: "/utilities/allotment-letter" },
                   { name: "Customer Care", link: "#unit-size" },
                   { name: "Log Report", link: "#stock" },
                   { name: "Upcoming Birthdays", link: "#broker" },

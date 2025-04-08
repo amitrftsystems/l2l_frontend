@@ -173,9 +173,13 @@ export const deleteProperty = async (req, res) => {
 
 export const getPropertyById = async (req, res) => {
   try {
-    const { property_id } = req.params;
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ success: false, message: "Property ID is required" });
+    }
+
     const property = await prisma.property.findUnique({
-      where: { property_id: parseInt(property_id) }
+      where: { property_id: parseInt(id) }
     });
 
     if (!property) {

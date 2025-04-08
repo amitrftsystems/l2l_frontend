@@ -29,10 +29,10 @@ const router = express.Router();
 
 // customer
 router.post("/add-customer", addCustomer);
-router.put("/customer/:customer_id", editCustomer);
+router.put("/customer/:id", editCustomer);
 router.get("/get-customers", getCustomers);
-router.get("/customer/:customer_id", getCustomerById);
-router.delete("/customer/:customer_id", deleteCustomer);
+router.get("/customer/:id", getCustomerById);
+router.delete("/customer/:id", deleteCustomer);
 
 // bank
 router.post("/add-bank", addBank);
@@ -50,10 +50,10 @@ router.delete("/broker/:id", deleteBroker);
 
 // project
 router.post("/add-project", addProject);
-router.put("/project/:project_id", updateProject);
+router.put("/project/:id", updateProject);
 router.get("/get-projects", getProjects);
 router.get("/projects/:id", getProjectById);
-router.delete("/project/:project_id", deleteProject);
+router.delete("/project/:id", deleteProject);
 
 // co-applicant
 router.post("/co-applicant", addCoApplicant);
@@ -62,9 +62,9 @@ router.post("/co-applicant", addCoApplicant);
 // installment plan
 router.post("/add-new-installment-plan", addNewInstallmentPlan);
 router.get("/installment-plans", getInstallments);
-router.get("/installment-plan/:installment_plan_id", getInstallmentById);
-router.put("/installment-plan/:installment_plan_id", updateInstallment);
-router.delete("/installment-plan/:installment_plan_id", deleteInstallment);
+router.get("/installment-plan/:id", getInstallmentById);
+router.put("/installment-plan/:id", updateInstallment);
+router.delete("/installment-plan/:id", deleteInstallment);
 
 // plc
 router.post("/add-new-plc", addNewPLC);
@@ -75,17 +75,17 @@ router.delete("/plc/:id", deletePLC);
 
 // property
 router.post("/property", createProperty);
-router.put("/property/:property_id", updateProperty);
+router.put("/property/:id", updateProperty);
 router.get("/get-property", getProperties);
-router.get("/property/:property_id", getPropertyById);
-router.delete("/property/:property_id", deleteProperty);
+router.get("/property/:id", getPropertyById);
+router.delete("/property/:id", deleteProperty);
 
 // property size
 router.post("/add-new-property-size", addNewPropertySize);
 router.get("/property-sizes", getPropertySize);
-router.get("/property-size/:property_size_id", getPropertySizeById);
-router.put("/property-size/:property_size_id", updatePropertySize);
-router.delete("/property-size/:property_size_id", deletePropertySize);
+router.get("/property-size/:id", getPropertySizeById);
+router.put("/property-size/:id", updatePropertySize);
+router.delete("/property-size/:id", deletePropertySize);
 
 // stock
 router.post("/stock", addStock);

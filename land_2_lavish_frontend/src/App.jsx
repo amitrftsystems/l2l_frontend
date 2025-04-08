@@ -29,7 +29,11 @@ import LeanBank from "./components/forms/master/leanbank/LeanBank.jsx";
 
 import Login from "./login/Login.jsx";
 import SuperAdminDashboard from "./superAdminDashboard/SuperadminDashboard.jsx";
-import Employees from "./admin/CreateEmployee.jsx";
+
+
+{/* Utilities imports */}
+import Employees from "./components/utilites/Employee.jsx";
+import AllotmentLetter from "./components/utilites/AllotmentLetter.jsx";
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -191,6 +195,11 @@ function App() {
           <Route path="/utilities/manage-employees" element={
             <ProtectedRoute allowedRoles={['ADMIN']}>
               <Employees />
+            </ProtectedRoute>
+          } />
+          <Route path="/utilities/allotment-letter" element={
+            <ProtectedRoute allowedRoles={['ADMIN', 'EMPLOYEE']}>
+              <AllotmentLetter />
             </ProtectedRoute>
           } />
         </Routes>

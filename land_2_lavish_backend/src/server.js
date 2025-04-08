@@ -6,6 +6,7 @@ import userRoutes from './routes/userRoutes.js';
 import { connectDB } from './db/index.js';
 import transactionRoutes from './routes/transactionRoutes.js';
 import masterRoutes from './routes/masterRoutes.js';
+import utilitiesRoutes from './routes/utlilitesRoutes.js';
 import prisma from './db/index.js';
 dotenv.config();
 
@@ -21,7 +22,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/master', masterRoutes);
-
+app.use('/api/utilities', utilitiesRoutes);
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
