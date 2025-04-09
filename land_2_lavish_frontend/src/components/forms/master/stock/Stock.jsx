@@ -41,7 +41,7 @@ const BASE_URL = "http://localhost:5000/api/master";
 const Stock = () => {
   const initialFormData = {
     projectId: "", propertyDescription: "", propertyId: "", size: "", bsp: "", 
-    collaborator: "", remarks: "", onHold: "Hold", holdRemarks: "", tillDate: new Date()
+    collaborator: "", remarks: "", onHold: "Hold",  tillDate: new Date()
   };
 
   const [formData, setFormData] = useState(initialFormData);
@@ -104,15 +104,11 @@ const Stock = () => {
     if (!formData.projectId || !formData.propertyId) return;
     
     try {
-      const response = await fetch(`${BASE_URL}/stock/check-stock-property`, {
-        method: 'POST',
+      const response = await fetch(`${BASE_URL}/stock/check-property?project_id=${formData.projectId}&property_id=${formData.propertyId}`, {
+        method: 'GET',
         headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          project_id: formData.projectId,
-          property_id: formData.propertyId
-        })
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
       });
       if (!response.ok) throw new Error(`Check stock failed: ${response.status}`);
       const data = await response.json();
@@ -128,10 +124,20 @@ const Stock = () => {
     
     try {
       setLoading(prev => ({ ...prev, fetchProperty: true }));
-      const response = await fetch(`${BASE_URL}/stock/get-property?project_id=${formData.projectId}&property_id=${formData.propertyId}`);
-      if (!response.ok) throw new Error(`Failed to fetch property: ${response.status}`);
-      const data = await response.json();
+      const response = await fetch(`${BASE_URL}/stock/get-property?project_id=${formData.projectId}&property_id=${formData.propertyId}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
       
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error("Property details not found");
+        }
+        throw new Error(`Failed to fetch property: ${response.status}`);
+      }
+      
+      const data = await response.json();
       if (data?.success && data.data) {
         setFormData(prev => ({
           ...prev,
@@ -144,10 +150,16 @@ const Stock = () => {
           holdRemarks: data.data.hold_remarks || "",
           tillDate: data.data.hold_till_date ? new Date(data.data.hold_till_date) : new Date()
         }));
+      } else {
+        throw new Error("Invalid property data received");
       }
     } catch (error) {
       console.error("Fetch property error:", error);
       toast.error(error.message || "Failed to load property details");
+      setPropertyValidation({ 
+        isValid: false, 
+        message: error.message || "Failed to load property details" 
+      });
     } finally {
       setLoading(prev => ({ ...prev, fetchProperty: false }));
     }
@@ -180,6 +192,25 @@ const Stock = () => {
     return Object.keys(errors).length === 0;
   };
 
+  const handleSelect = (type, value) => {
+    if (type === "project") {
+      const selectedProject = projects.find(p => p.project_id === parseInt(value));
+      setFormData(prev => ({
+        ...prev,
+        projectId: selectedProject?.project_id || "",
+        projectName: selectedProject?.project_name || "",
+        size: "",
+        collaborator: ""
+      }));
+    } else if (type === "size") {
+      setFormData(prev => ({ ...prev, size: value }));
+    } else if (type === "broker") {
+      setFormData(prev => ({ ...prev, collaborator: parseInt(value) }));
+    }
+    setDropdownOpen(prev => ({ ...prev, [type]: false }));
+    setSearchTerm(prev => ({ ...prev, [type]: "" }));
+  };
+
   const handleStockUpdateClick = async () => {
     if (!formData.projectId || !formData.propertyId || !/^\d+$/.test(formData.propertyId)) {
       toast.error("Valid Project and Property ID are required");
@@ -188,20 +219,25 @@ const Stock = () => {
 
     try {
       setLoading(prev => ({ ...prev, checkStock: true }));
-      const response = await fetch(`${BASE_URL}/stock/check-stock-property`, {
-        method: 'POST',
+      const response = await fetch(`${BASE_URL}/stock/check-property?project_id=${formData.projectId}&property_id=${formData.propertyId}`, {
+        method: 'GET',
         headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          project_id: formData.projectId,
-          property_id: formData.propertyId
-        })
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
       });
-      if (!response.ok) throw new Error(`Check stock failed: ${response.status}`);
-      const data = await response.json();
 
-      if (data.exists) {
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error("Stock check endpoint not found");
+        }
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to check stock");
+      }
+
+      const responseData = await response.json();
+      console.log("Stock check response:", responseData);
+
+      if (responseData.exists) {
         setIsUpdateMode(true);
         await fetchPropertyDetails();
         toast.success("Property found - now in update mode");
@@ -213,6 +249,10 @@ const Stock = () => {
     } catch (error) {
       console.error("Stock update error:", error);
       toast.error(error.message || "Error checking stock");
+      setPropertyValidation({ 
+        isValid: false, 
+        message: error.message || "Error checking stock" 
+      });
     } finally {
       setLoading(prev => ({ ...prev, checkStock: false }));
     }
@@ -237,18 +277,6 @@ const Stock = () => {
     }
   };
 
-  const handleSelect = (type, value) => {
-    if (type === "project") {
-      setFormData(prev => ({ ...prev, projectId: parseInt(value), size: "", collaborator: "" }));
-    } else if (type === "size") {
-      setFormData(prev => ({ ...prev, size: value }));
-    } else if (type === "broker") {
-      setFormData(prev => ({ ...prev, collaborator: value }));
-    }
-    setDropdownOpen(prev => ({ ...prev, [type]: false }));
-    setSearchTerm(prev => ({ ...prev, [type]: "" }));
-  };
-
   const handleDateChange = (date) => {
     setFormData(prev => ({ ...prev, tillDate: date }));
     if (formErrors.tillDate) setFormErrors(prev => ({ ...prev, tillDate: "" }));
@@ -261,27 +289,32 @@ const Stock = () => {
     try {
       if (!isUpdateMode) {
         setLoading(prev => ({ ...prev, checkStock: true }));
-        const checkResponse = await fetch(`${BASE_URL}/stock/check-stock-property`, {
-          method: 'POST',
+        const checkResponse = await fetch(`${BASE_URL}/stock/check-property?project_id=${formData.projectId}&property_id=${formData.propertyId}`, {
+          method: 'GET',
           headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            project_id: formData.projectId,
-            property_id: formData.propertyId
-          })
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
         });
-        if (!checkResponse.ok) throw new Error("Failed to check stock");
+
+        if (!checkResponse.ok) {
+          if (checkResponse.status === 404) {
+            throw new Error("Stock check endpoint not found");
+          }
+          const errorData = await checkResponse.json();
+          throw new Error(errorData.message || "Failed to check stock");
+        }
+
         const checkData = await checkResponse.json();
+        console.log("Stock check response:", checkData);
+
         if (checkData.exists) {
           setPropertyValidation({ isValid: false, message: "Property already exists" });
           return toast.error("Property already exists");
         }
       }
 
-      const projectId = parseInt(formData.projectId);
       const propertyId = parseInt(formData.propertyId);
-      if (!projectId || !propertyId) throw new Error("Invalid IDs");
+      if (!propertyId) throw new Error("Invalid Property ID");
 
       const finalPropertyDescription = formData.propertyDescription === "Other" 
         ? customPropertyType 
@@ -289,22 +322,25 @@ const Stock = () => {
 
       setLoading(prev => ({ ...prev, submission: true }));
       const payload = {
-        projectId, propertyId,
-        propertyDescription: finalPropertyDescription,
-        size: formData.size,
-        bsp: formData.bsp || null,
-        collaborator: formData.collaborator || null,
+        project_id: parseInt(formData.projectId),
+        property_id: propertyId,
+        property_type: finalPropertyDescription,
+        size: parseInt(formData.size) || null,
+        bsp: formData.bsp ? parseFloat(formData.bsp) : null,
+        broker_id: formData.collaborator ? parseInt(formData.collaborator) : null,
         remarks: formData.remarks || null,
-        onHold: formData.onHold,
-        holdRemarks: formData.holdRemarks || null,
-        tillDate: formData.onHold === "Hold" ? formData.tillDate.toISOString() : null
+        on_hold_status: formData.onHold,
+        hold_remarks: formData.holdRemarks || null,
+        hold_till_date: formData.onHold === "Hold" ? formData.tillDate.toISOString() : null
       };
+
+      console.log("Submitting payload:", payload);
 
       let endpoint, method;
       if (isUpdateMode) {
         endpoint = formData.onHold === "Free" 
-          ? `${BASE_URL}/stock/delete/${projectId}/${propertyId}`
-          : `${BASE_URL}/stock/update/${projectId}/${propertyId}`;
+          ? `${BASE_URL}/stock/delete/${formData.projectId}/${propertyId}`
+          : `${BASE_URL}/stock/update/${formData.projectId}/${propertyId}`;
         method = formData.onHold === "Free" ? "DELETE" : "PUT";
       } else {
         endpoint = `${BASE_URL}/stock`;
@@ -313,12 +349,23 @@ const Stock = () => {
 
       const response = await fetch(endpoint, {
         method,
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
         body: method !== "DELETE" ? JSON.stringify(payload) : null
       });
 
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error("Endpoint not found");
+        }
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Operation failed");
+      }
+
       const result = await response.json();
-      if (!response.ok || !result?.success) throw new Error(result?.message || "Operation failed");
+      if (!result?.success) throw new Error(result?.message || "Operation failed");
 
       const successMessage = isUpdateMode
         ? formData.onHold === "Free" ? "Property removed" : "Stock updated"
@@ -330,6 +377,10 @@ const Stock = () => {
     } catch (error) {
       console.error("Submission error:", error);
       toast.error(error.message || "Operation Failed");
+      setPropertyValidation({ 
+        isValid: false, 
+        message: error.message || "Operation Failed" 
+      });
     } finally {
       setLoading(prev => ({ ...prev, submission: false, checkStock: false }));
     }
@@ -511,7 +562,7 @@ const Stock = () => {
               <label className="block text-gray-700 font-medium">Collaborator</label>
               <div className="relative mt-1">
                 <input
-                  value={getSelectedName(brokers, formData.collaborator) || searchTerm.broker}
+                  value={getSelectedName(brokers, formData.collaborator, "name", "broker_id") || searchTerm.broker}
                   onChange={e => setSearchTerm(p => ({ ...p, broker: e.target.value }))}
                   onClick={() => setDropdownOpen(p => ({ ...p, broker: true }))}
                   className="w-full p-2 border border-black rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"

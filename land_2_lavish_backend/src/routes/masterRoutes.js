@@ -19,7 +19,7 @@ import { createProperty, updateProperty, getProperties, getPropertyById, deleteP
 
 import { addNewPropertySize, getPropertySize, getPropertySizeById, updatePropertySize, deletePropertySize } from "../controllers/masterController/propertySize.js";
 
-import { checkProject, checkOrCreateProperty, checkStockProperty,addStock } from "../controllers/masterController/stock.js";
+import { checkProject, checkOrCreateProperty, checkStockProperty,addStock } from "../controllers/masterController/stock/stock.js";
 
 
 
@@ -90,7 +90,7 @@ router.delete("/property-size/:id", deletePropertySize);
 // stock
 router.post("/stock", addStock);
 router.post("/stock/check-project", checkProject);
-router.post("/stock/check-property", checkOrCreateProperty);
+router.get("/stock/check-property", checkStockProperty);
 router.post("/stock/check-stock-property", checkStockProperty);
 
 export default router;
