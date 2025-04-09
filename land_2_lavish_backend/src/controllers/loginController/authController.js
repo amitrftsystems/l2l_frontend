@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import prisma from '../../db/index.js';
+import { createLog } from '../utilitesController/logController.js';
 
 export const login = async (req, res) => {
   try {
@@ -31,6 +32,7 @@ export const login = async (req, res) => {
     );
 
     console.log('Login successful for user:', { userId, role: user.role });
+    await createLog(user.id, 'LOGIN', 'User logged in successfully');
     res.json({
       token,
       user: {

@@ -1,6 +1,9 @@
 import { useRef, useState, useEffect } from "react";
 import { X, ChevronDown } from "lucide-react";
 import axios from "axios";
+import { AppBar, Toolbar, IconButton, Typography } from '@mui/material';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import { useNavigate } from 'react-router-dom';
 
 export default function AllotmentLetter() {
     const [projects, setProjects] = useState([]);
@@ -116,6 +119,8 @@ export default function AllotmentLetter() {
             setIsSubmitting(false);
         }
     };
+    const navigate = useNavigate();
+
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -133,6 +138,23 @@ export default function AllotmentLetter() {
     }, [dropdownOpen.project]);
 
     return (
+        <>
+      <AppBar position="static" sx={{ bgcolor: '#272727' }}>
+        <Toolbar>
+          <IconButton
+            edge="start"
+            color="inherit"
+            onClick={() => navigate('/admin')}
+            sx={{ mr: 2 }}
+          >
+            <ArrowBackIcon />
+          </IconButton>
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+            Allotment Letter
+          </Typography>
+        </Toolbar>
+      </AppBar>
+      
         <form onSubmit={handleSubmit} className="p-4 max-w-2xl mx-auto">
             <div className="p-4 max-w-2xl mx-auto">
                 <h1 className="text-2xl font-bold mb-6">Allotment Letter</h1>
@@ -226,5 +248,6 @@ export default function AllotmentLetter() {
                 </div>
             </div>
         </form>
+        </>
     );
 }

@@ -27,7 +27,17 @@ model User {
   createdBy    User?   @relation("CreatedUsers", fields: [createdById], references: [id])
   createdById  String?
   createdUsers User[]  @relation("CreatedUsers")
-} 
+  logs         Log[]
+}
+
+model Log {
+  id        String   @id @default(uuid())
+  userId    String
+  action    String
+  details   String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+}
 
 model Booking {
    booking_id      Int      @id @default(autoincrement())

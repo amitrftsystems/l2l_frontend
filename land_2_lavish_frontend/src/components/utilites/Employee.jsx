@@ -25,6 +25,7 @@ import {
   Alert,
   AppBar,
   Toolbar,
+  InputAdornment,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -32,11 +33,14 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import LockResetIcon from '@mui/icons-material/LockReset';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
+import SearchIcon from '@mui/icons-material/Search';
 import axios from 'axios';
 
 const Employees = () => {
   const navigate = useNavigate();
   const [employees, setEmployees] = useState([]);
+  const [filteredEmployees, setFilteredEmployees] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [open, setOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [formData, setFormData] = useState({
@@ -69,6 +73,18 @@ const Employees = () => {
     retypePassword: false,
   });
 
+  useEffect(() => {
+    const filtered = employees.filter(employee => {
+      const searchLower = searchTerm.toLowerCase();
+      return (
+        employee.userId.toLowerCase().includes(searchLower) ||
+        employee.name.toLowerCase().includes(searchLower) ||
+        employee.email.toLowerCase().includes(searchLower)
+      );
+    });
+    setFilteredEmployees(filtered);
+  }, [searchTerm, employees]);
+
   const validateCredentials = (userId, password) => {
     const userIdRegex = /^[a-zA-Z0-9]+$/;
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{8,}$/;
@@ -82,11 +98,6 @@ const Employees = () => {
     return null;
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    navigate('/login');
-  };
 
   const fetchEmployees = async () => {
     try {
@@ -95,6 +106,7 @@ const Employees = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
       setEmployees(response.data);
+      setFilteredEmployees(response.data);
       setStats({
         totalEmployees: response.data.length,
         activeEmployees: response.data.filter(emp => emp.status === 'active').length,
@@ -196,7 +208,7 @@ const Employees = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
       setDeleteDialogOpen(false);
-      fetchEmployees(); // Refresh the user list
+      fetchEmployees();
     } catch (error) {
       console.error('Error deleting user:', error);
       setError(error.response?.data?.error || 'Failed to delete user');
@@ -277,11 +289,8 @@ const Employees = () => {
             <ArrowBackIcon />
           </IconButton>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            Employee Management
+            Manage Employees
           </Typography>
-          <Button color="inherit" onClick={handleLogout}>
-            Logout
-          </Button>
         </Toolbar>
       </AppBar>
 
@@ -294,65 +303,123 @@ const Employees = () => {
 
         <Grid container spacing={3} sx={{ mb: 4 }}>
           <Grid item xs={12} md={4}>
-            <Card>
+            <Card sx={{ bgcolor: '#f8f9fa' }}>
               <CardContent>
                 <Typography color="textSecondary" gutterBottom>
                   Total Employees
                 </Typography>
-                <Typography variant="h4">{stats.totalEmployees}</Typography>
+                <Typography variant="h4" color="primary">
+                  {stats.totalEmployees}
+                </Typography>
               </CardContent>
             </Card>
           </Grid>
           <Grid item xs={12} md={4}>
-            <Card>
+            <Card sx={{ bgcolor: '#f8f9fa' }}>
               <CardContent>
                 <Typography color="textSecondary" gutterBottom>
                   Active Employees
                 </Typography>
-                <Typography variant="h4">{stats.activeEmployees}</Typography>
+                <Typography variant="h4" color="success.main">
+                  {stats.activeEmployees}
+                </Typography>
               </CardContent>
             </Card>
           </Grid>
           <Grid item xs={12} md={4}>
-            <Card>
+            <Card sx={{ bgcolor: '#f8f9fa' }}>
               <CardContent>
                 <Typography color="textSecondary" gutterBottom>
                   Recent Employees (30 days)
                 </Typography>
-                <Typography variant="h4">{stats.recentEmployees}</Typography>
+                <Typography variant="h4" color="info.main">
+                  {stats.recentEmployees}
+                </Typography>
               </CardContent>
             </Card>
           </Grid>
         </Grid>
 
-        <Box display="flex" justifyContent="flex-end" mb={3}>
-          <Button variant="contained" color="primary" onClick={() => handleOpen()}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+          <TextField
+            placeholder="Search by User ID, Name, or Email..."
+            variant="outlined"
+            size="small"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            sx={{ width: 300 }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              ),
+            }}
+          />
+          <Button 
+            variant="contained" 
+            color="primary" 
+            onClick={() => handleOpen()}
+            sx={{ 
+              bgcolor: '#272727',
+              '&:hover': {
+                bgcolor: '#1a1a1a',
+              }
+            }}
+          >
             Add New Employee
           </Button>
         </Box>
 
-        <TableContainer component={Paper}>
+        <TableContainer component={Paper} sx={{ boxShadow: 3 }}>
           <Table>
             <TableHead>
-              <TableRow>
+              <TableRow sx={{ bgcolor: '#f8f9fa' }}>
                 <TableCell>User ID</TableCell>
                 <TableCell>Name</TableCell>
                 <TableCell>Email</TableCell>
+                <TableCell>Role</TableCell>
                 <TableCell>Created At</TableCell>
                 <TableCell>Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {employees.map((employee) => (
-                <TableRow key={employee.id}>
+              {filteredEmployees.map((employee) => (
+                <TableRow 
+                  key={employee.id}
+                  sx={{ 
+                    '&:hover': { 
+                      bgcolor: '#f8f9fa',
+                      transition: 'background-color 0.2s'
+                    } 
+                  }}
+                >
                   <TableCell>{employee.userId}</TableCell>
                   <TableCell>{employee.name}</TableCell>
                   <TableCell>{employee.email}</TableCell>
                   <TableCell>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        display: 'inline-block',
+                        px: 1,
+                        py: 0.5,
+                        borderRadius: 1,
+                        bgcolor: employee.role === 'ADMIN' ? 'primary.light' : 'success.light',
+                        color: employee.role === 'ADMIN' ? 'primary.dark' : 'success.dark',
+                      }}
+                    >
+                      {employee.role}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
                     {new Date(employee.createdAt).toLocaleDateString()}
                   </TableCell>
                   <TableCell>
-                    <IconButton onClick={() => handleOpen(employee)}>
+                    <IconButton 
+                      onClick={() => handleOpen(employee)}
+                      sx={{ color: 'primary.main' }}
+                    >
                       <EditIcon />
                     </IconButton>
                     <IconButton 
@@ -363,7 +430,6 @@ const Employees = () => {
                     </IconButton>
                     <IconButton 
                       color="error" 
-                      size="small"
                       onClick={() => handleDeleteClick(employee)}
                     >
                       <DeleteIcon />
@@ -371,6 +437,15 @@ const Employees = () => {
                   </TableCell>
                 </TableRow>
               ))}
+              {filteredEmployees.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
+                    <Typography color="textSecondary">
+                      No employees found matching your search criteria
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </TableContainer>
@@ -448,7 +523,6 @@ const Employees = () => {
           </DialogActions>
         </Dialog>
 
-        {/* Delete Confirmation Dialog */}
         <Dialog
           open={deleteDialogOpen}
           onClose={handleDeleteCancel}
