@@ -34,6 +34,7 @@ import LockResetIcon from '@mui/icons-material/LockReset';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import SearchIcon from '@mui/icons-material/Search';
+import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import axios from 'axios';
 
 const Employees = () => {
@@ -48,6 +49,9 @@ const Employees = () => {
     email: '',
     password: '',
     name: '',
+    addharCard: '',
+    dob: '',
+    mobile: '',
   });
   const [stats, setStats] = useState({
     totalEmployees: 0,
@@ -72,6 +76,8 @@ const Employees = () => {
     newPassword: false,
     retypePassword: false,
   });
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [viewEmployee, setViewEmployee] = useState(null);
 
   useEffect(() => {
     const filtered = employees.filter(employee => {
@@ -79,25 +85,40 @@ const Employees = () => {
       return (
         employee.userId.toLowerCase().includes(searchLower) ||
         employee.name.toLowerCase().includes(searchLower) ||
-        employee.email.toLowerCase().includes(searchLower)
+        employee.email.toLowerCase().includes(searchLower) ||
+        employee.addharCard.toLowerCase().includes(searchLower) ||
+        employee.dob.toLowerCase().includes(searchLower) ||
+        employee.mobile.toLowerCase().includes(searchLower)
       );
     });
     setFilteredEmployees(filtered);
   }, [searchTerm, employees]);
 
-  const validateCredentials = (userId, password) => {
+  const validateCredentials = (userId, password, email, addharCard, mobile, dob) => {
     const userIdRegex = /^[a-zA-Z0-9]+$/;
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{8,}$/;
-    
+    const addharCardRegex = /^\d{12}$/;
+    const mobileRegex = /^\d{10}$/;
     if (!userIdRegex.test(userId)) {
       return 'User ID must contain only letters and numbers';
+    }
+    if(!email){
+      return 'Email is required';
     }
     if (password && !passwordRegex.test(password)) {
       return 'Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, and one number';
     }
+    if (addharCard && !addharCardRegex.test(addharCard)) {
+      return 'Addhar Card must be exactly 12 digits';
+    }
+    if (mobile && !mobileRegex.test(mobile)) {
+      return 'Mobile number must be exactly 10 digits';
+    }
+    if (!dob) {
+      return 'Date of birth is required';
+    }
     return null;
   };
-
 
   const fetchEmployees = async () => {
     try {
@@ -134,6 +155,9 @@ const Employees = () => {
         email: employee.email,
         name: employee.name,
         password: '',
+        addharCard: employee.addharCard || '',
+        dob: employee.dob ? employee.dob.split('T')[0] : '',
+        mobile: employee.mobile || '',
       });
     } else {
       setSelectedEmployee(null);
@@ -142,6 +166,9 @@ const Employees = () => {
         email: '',
         password: '',
         name: '',
+        addharCard: '',
+        dob: '',
+        mobile: '',
       });
     }
     setOpen(true);
@@ -153,45 +180,136 @@ const Employees = () => {
   };
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+    const { name, value } = e.target;
+    
+    // Restrict Addhar Card and mobile to digits only
+    if (name === 'addharCard') {
+      // Only allow digits
+      const digitsOnly = value.replace(/\D/g, '');
+      setFormData({
+        ...formData,
+        [name]: digitsOnly,
+      });
+    } else if (name === 'mobile') {
+      // Only allow digits for mobile
+      const digitsOnly = value.replace(/\D/g, '');
+      
+      // Store mobile number without prefix in state
+      setFormData({
+        ...formData,
+        [name]: digitsOnly,
+      });
+    } else {
+      setFormData({
+        ...formData,
+        [name]: value,
+      });
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setEditError('');
-    const validationError = validateCredentials(formData.userId, formData.password);
+    const validationError = validateCredentials(
+      formData.userId, 
+      formData.password, 
+      formData.email, 
+      formData.addharCard, 
+      formData.mobile, 
+      formData.dob
+    );
+    
     if (validationError) {
       setEditError(validationError);
       return;
     }
 
     try {
+      setLoading(true);
       const token = localStorage.getItem('token');
+      
+      // Ensure proper data formatting before sending
+      const requestData = {
+        userId: formData.userId,
+        email: formData.email,
+        name: formData.name,
+        password: formData.password,
+        addharCard: formData.addharCard || '',
+        mobile: formData.mobile || '',
+        // Format as full ISO DateTime string for Prisma
+        dob: formData.dob ? new Date(formData.dob).toISOString() : null
+      };
+
+      // Remove password if empty (for updates)
+      if (!requestData.password && selectedEmployee) {
+        delete requestData.password;
+      }
+
       if (selectedEmployee) {
         await axios.put(
           `http://localhost:5000/api/users/update-users/${selectedEmployee.id}`,
-          formData,
+          requestData,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
         );
       } else {
+        // For new users, password is required
+        if (!requestData.password) {
+          setEditError('Password is required for new employees');
+          setLoading(false);
+          return;
+        }
+        
         await axios.post(
           'http://localhost:5000/api/users/add-user',
-          { ...formData, role: 'EMPLOYEE' },
+          { ...requestData, role: 'EMPLOYEE' },
           {
             headers: { Authorization: `Bearer ${token}` },
           }
         );
       }
+
       handleClose();
       fetchEmployees();
+      setError('');
     } catch (error) {
       console.error('Error saving employee:', error);
-      setEditError(error.response?.data?.error || 'Failed to save employee');
+      
+      // Extract detailed error information
+      const serverError = error.response?.data?.error || '';
+      
+      // Handle specific unique constraint violations
+      if (serverError.includes('Unique constraint failed')) {
+        if (serverError.includes('userId')) {
+          setEditError('This User ID is already taken. Please use a different one.');
+        } else if (serverError.includes('email')) {
+          setEditError('This Email address is already registered. Please use a different one.');
+        } else if (serverError.includes('addharCard')) {
+          setEditError('This Addhar Card number is already registered. Please check the number.');
+        } else if (serverError.includes('mobile')) {
+          setEditError('This Mobile number is already registered. Please use a different one.');
+        } else {
+          setEditError('A field with unique constraint failed. Please check your inputs.');
+        }
+      } else {
+        // Generic error with details if available
+        const errorMessage = error.response?.data?.error 
+          || error.response?.data?.message
+          || error.message
+          || 'Failed to save employee. Please check your inputs and try again.';
+        
+        setEditError(errorMessage);
+      }
+      
+      // Log additional details for debugging
+      if (error.response) {
+        console.log('Error response data:', error.response.data);
+        console.log('Error status:', error.response.status);
+        console.log('Error headers:', error.response.headers);
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -274,6 +392,16 @@ const Employees = () => {
       console.error('Error resetting password:', error);
       setResetPasswordError(error.response?.data?.error || 'Failed to reset password');
     }
+  };
+
+  const handleViewClick = (employee) => {
+    setViewEmployee(employee);
+    setViewDialogOpen(true);
+  };
+
+  const handleViewClose = () => {
+    setViewDialogOpen(false);
+    setViewEmployee(null);
   };
 
   return (
@@ -417,6 +545,12 @@ const Employees = () => {
                   </TableCell>
                   <TableCell>
                     <IconButton 
+                      onClick={() => handleViewClick(employee)}
+                      sx={{ color: 'info.main' }}
+                    >
+                      <VisibilityOutlinedIcon />
+                    </IconButton>
+                    <IconButton 
                       onClick={() => handleOpen(employee)}
                       sx={{ color: 'primary.main' }}
                     >
@@ -470,6 +604,7 @@ const Employees = () => {
                 value={formData.userId}
                 onChange={handleChange}
                 helperText="Only letters and numbers allowed"
+                error={!!editError && editError.includes('User ID')}
               />
               <TextField
                 margin="normal"
@@ -479,6 +614,7 @@ const Employees = () => {
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
+                error={!!editError && editError.includes('name')}
               />
               <TextField
                 margin="normal"
@@ -489,7 +625,58 @@ const Employees = () => {
                 type="email"
                 value={formData.email}
                 onChange={handleChange}
+                error={!!editError && editError.includes('Email')}
               />
+              <TextField
+                margin="normal"
+                required
+                fullWidth
+                label="Addhar Card"
+                name="addharCard"
+                value={formData.addharCard}
+                onChange={handleChange}
+                helperText="Must be exactly 12 digits (unique identifier)"
+                error={!!editError && editError.includes('Addhar')}
+                InputProps={{
+                  inputProps: { 
+                    maxLength: 12,
+                    inputMode: 'numeric',
+                    pattern: '[0-9]*' 
+                  }
+                }}
+              />
+              <TextField
+                margin="normal"
+                required
+                fullWidth
+                label="Date of Birth"
+                name="dob"
+                type="date"
+                value={formData.dob}
+                onChange={handleChange}
+                InputLabelProps={{ shrink: true }}
+                error={!!editError && editError.includes('birth')}
+              />
+              <TextField
+                margin="normal"
+                required
+                fullWidth
+                label="Mobile Number"
+                name="mobile" 
+                value={formData.mobile}
+                onChange={handleChange}
+                helperText="Must be exactly 10 digits - will be stored with +91 prefix"
+                error={!!editError && editError.includes('Mobile')}
+                InputProps={{
+                  startAdornment: <InputAdornment position="start">+91</InputAdornment>,
+                  inputProps: { 
+                    maxLength: 10,
+                    inputMode: 'numeric',
+                    pattern: '[0-9]*' 
+                  }
+                }}
+              />
+              
               {!selectedEmployee && (
                 <TextField
                   margin="normal"
@@ -501,6 +688,7 @@ const Employees = () => {
                   value={formData.password}
                   onChange={handleChange}
                   helperText="Must be at least 8 characters with uppercase, lowercase and number"
+                  error={!!editError && editError.includes('Password')}
                   InputProps={{
                     endAdornment: (
                       <IconButton
@@ -516,9 +704,14 @@ const Employees = () => {
             </Box>
           </DialogContent>
           <DialogActions>
-            <Button onClick={handleClose}>Cancel</Button>
-            <Button onClick={handleSubmit} variant="contained" color="primary">
-              {selectedEmployee ? 'Update' : 'Create'}
+            <Button onClick={handleClose} disabled={loading}>Cancel</Button>
+            <Button 
+              onClick={handleSubmit} 
+              variant="contained" 
+              color="primary"
+              disabled={loading}
+            >
+              {loading ? 'Saving...' : (selectedEmployee ? 'Update' : 'Create')}
             </Button>
           </DialogActions>
         </Dialog>
@@ -634,6 +827,97 @@ const Employees = () => {
             <Button onClick={handleResetPasswordClose}>Cancel</Button>
             <Button onClick={handleResetPasswordSubmit} variant="contained" color="primary">
               Reset Password
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        <Dialog 
+          open={viewDialogOpen} 
+          onClose={handleViewClose}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle sx={{ 
+            bgcolor: '#272727', 
+            color: 'white',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <Typography variant="h6">Employee Details</Typography>
+            <IconButton color="inherit" onClick={handleViewClose} size="small">
+              <Typography variant="h6">×</Typography>
+            </IconButton>
+          </DialogTitle>
+          <DialogContent sx={{ mt: 2 }}>
+            {viewEmployee && (
+              <Box>
+                <Paper elevation={0} sx={{ p: 2, mb: 2, bgcolor: '#f8f9fa', borderRadius: 2 }}>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12}>
+                      <Typography variant="h6" color="primary" gutterBottom>
+                        {viewEmployee.name}
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          display: 'inline-block',
+                          px: 1,
+                          py: 0.5,
+                          borderRadius: 1,
+                          bgcolor: viewEmployee.role === 'ADMIN' ? 'primary.light' : 'success.light',
+                          color: viewEmployee.role === 'ADMIN' ? 'primary.dark' : 'success.dark',
+                        }}
+                      >
+                        {viewEmployee.role}
+                      </Typography>
+                    </Grid>
+                  </Grid>
+                </Paper>
+                
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <Paper elevation={0} sx={{ p: 2, height: '100%', bgcolor: '#f8f9fa', borderRadius: 2 }}>
+                      <Typography variant="subtitle2" color="textSecondary">User ID</Typography>
+                      <Typography variant="body1" gutterBottom>{viewEmployee.userId}</Typography>
+                      
+                      <Typography variant="subtitle2" color="textSecondary" sx={{ mt: 2 }}>Email</Typography>
+                      <Typography variant="body1" gutterBottom>{viewEmployee.email}</Typography>
+                      
+                      <Typography variant="subtitle2" color="textSecondary" sx={{ mt: 2 }}>Created At</Typography>
+                      <Typography variant="body1">
+                        {new Date(viewEmployee.createdAt).toLocaleString()}
+                      </Typography>
+                    </Paper>
+                  </Grid>
+                  
+                  <Grid item xs={12} sm={6}>
+                    <Paper elevation={0} sx={{ p: 2, height: '100%', bgcolor: '#f8f9fa', borderRadius: 2 }}>
+                      <Typography variant="subtitle2" color="textSecondary">Date of Birth</Typography>
+                      <Typography variant="body1" gutterBottom>
+                        {viewEmployee.dob ? new Date(viewEmployee.dob).toLocaleDateString() : 'Not provided'}
+                      </Typography>
+                      
+                      <Typography variant="subtitle2" color="textSecondary" sx={{ mt: 2 }}>Mobile</Typography>
+                      <Typography variant="body1" gutterBottom>
+                        {viewEmployee.mobile ? `+91 ${viewEmployee.mobile}` : 'Not provided'}
+                      </Typography>
+                      
+                      <Typography variant="subtitle2" color="textSecondary" sx={{ mt: 2 }}>Addhar Card</Typography>
+                      <Typography variant="body1">{viewEmployee.addharCard || 'Not provided'}</Typography>
+                    </Paper>
+                  </Grid>
+                </Grid>
+              </Box>
+            )}
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 3 }}>
+            <Button 
+              onClick={handleViewClose} 
+              variant="contained" 
+              sx={{ bgcolor: '#272727', '&:hover': { bgcolor: '#1a1a1a' } }}
+            >
+              Close
             </Button>
           </DialogActions>
         </Dialog>

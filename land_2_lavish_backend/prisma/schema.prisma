@@ -14,19 +14,22 @@ enum Role {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  userId    String   @unique
-  email     String   @unique
-  password  String
-  role      Role
-  name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  email       String   @unique
+  password    String
+  name        String
+  role        Role
+  addharCard   String?  @unique
+  dob         DateTime?    @map("dob")
+  mobile      String?   @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   // Relationships
-  createdBy    User?   @relation("CreatedUsers", fields: [createdById], references: [id])
+  createdBy    User?   @relation("UserCreations", fields: [createdById], references: [id])
   createdById  String?
-  createdUsers User[]  @relation("CreatedUsers")
+  createdUsers User[]  @relation("UserCreations")
   logs         Log[]
 }
 
@@ -40,7 +43,7 @@ model Log {
 }
 
 model Booking {
-   booking_id      Int      @id @default(autoincrement())
+  booking_id      Int      @id @default(autoincrement())
   customer_id     String   @db.VarChar(50)
   booking_date    DateTime @default(now())
   name            String   @db.VarChar(255)

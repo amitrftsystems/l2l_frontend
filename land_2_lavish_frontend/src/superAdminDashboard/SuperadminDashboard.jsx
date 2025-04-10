@@ -33,6 +33,7 @@ import LockResetIcon from '@mui/icons-material/LockReset';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import SearchIcon from '@mui/icons-material/Search';
+import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import axios from 'axios';
 
 const SuperadminDashboard = () => {
@@ -46,6 +47,9 @@ const SuperadminDashboard = () => {
     email: '',
     password: '',
     name: '',
+    addharCard: '',
+    dob: '',
+    mobile: '',
   });
   const [error, setError] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -66,6 +70,8 @@ const SuperadminDashboard = () => {
     newPassword: false,
     retypePassword: false,
   });
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [viewUser, setViewUser] = useState(null);
 
   useEffect(() => {
     const filtered = users.filter(user => {
@@ -81,6 +87,7 @@ const SuperadminDashboard = () => {
 
   const fetchUsers = async () => {
     try {
+      setLoading(true);
       const token = localStorage.getItem('token');
       const response = await axios.get('http://localhost:5000/api/users/get-users', {
         headers: { Authorization: `Bearer ${token}` },
@@ -90,6 +97,8 @@ const SuperadminDashboard = () => {
     } catch (error) {
       console.error('Error fetching users:', error);
       setError('Failed to fetch users');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -105,6 +114,9 @@ const SuperadminDashboard = () => {
         email: admin.email,
         name: admin.name,
         password: '',
+        addharCard: admin.addharCard || '',
+        dob: admin.dob ? admin.dob.split('T')[0] : '',
+        mobile: admin.mobile || '',
       });
     } else {
       setSelectedAdmin(null);
@@ -113,6 +125,9 @@ const SuperadminDashboard = () => {
         email: '',
         password: '',
         name: '',
+        addharCard: '',
+        dob: '',
+        mobile: '',
       });
     }
     setOpen(true);
@@ -124,59 +139,166 @@ const SuperadminDashboard = () => {
   };
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+    const { name, value } = e.target;
+    
+    // Restrict Addhar Card and mobile to digits only
+    if (name === 'addharCard') {
+      // Only allow digits
+      const digitsOnly = value.replace(/\D/g, '');
+      setFormData({
+        ...formData,
+        [name]: digitsOnly,
+      });
+    } else if (name === 'mobile') {
+      // Only allow digits for mobile
+      const digitsOnly = value.replace(/\D/g, '');
+      
+      // Store mobile number without prefix in state
+      setFormData({
+        ...formData,
+        [name]: digitsOnly,
+      });
+    } else {
+      setFormData({
+        ...formData,
+        [name]: value,
+      });
+    }
   };
 
-  const validateCredentials = (userId, password) => {
+  const validateCredentials = (userId, password, email, addharCard, mobile, dob) => {
     const userIdRegex = /^[a-zA-Z0-9]+$/;
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{8,}$/;
+    const addharCardRegex = /^\d{12}$/;
+    const mobileRegex = /^\d{10}$/;
     
     if (!userIdRegex.test(userId)) {
       return 'User ID must contain only letters and numbers';
     }
+    if(!email){
+      return 'Email is required';
+    }
     if (password && !passwordRegex.test(password)) {
       return 'Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, and one number';
+    }
+    if (addharCard && !addharCardRegex.test(addharCard)) {
+      return 'Addhar Card must be exactly 12 digits';
+    }
+    if (mobile && !mobileRegex.test(mobile)) {
+      return 'Mobile number must be exactly 10 digits';
+    }
+    if (!dob) {
+      return 'Date of birth is required';
     }
     return null;
   };
 
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setEditError('');
-    const validationError = validateCredentials(formData.userId, formData.password);
+    const validationError = validateCredentials(
+      formData.userId, 
+      formData.password, 
+      formData.email, 
+      formData.addharCard, 
+      formData.mobile, 
+      formData.dob
+    );
+    
     if (validationError) {
       setEditError(validationError);
       return;
     }
 
     try {
+      setLoading(true);
       const token = localStorage.getItem('token');
+      
+      // Ensure proper data formatting before sending
+      const requestData = {
+        userId: formData.userId,
+        email: formData.email,
+        name: formData.name,
+        password: formData.password,
+        addharCard: formData.addharCard || '',
+        mobile: formData.mobile || '',
+        // Format as full ISO DateTime string for Prisma
+        dob: formData.dob ? new Date(formData.dob).toISOString() : null
+      };
+
+      // Remove password if empty (for updates)
+      if (!requestData.password && selectedAdmin) {
+        delete requestData.password;
+      }
+
       if (selectedAdmin) {
         await axios.put(
           `http://localhost:5000/api/users/update-users/${selectedAdmin.id}`,
-          formData,
+          requestData,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
         );
       } else {
+        // For new users, password is required
+        if (!requestData.password) {
+          setEditError('Password is required for new admins');
+          setLoading(false);
+          return;
+        }
+        
         await axios.post(
           'http://localhost:5000/api/users/add-user',
-          { ...formData, role: 'ADMIN' },
+          { ...requestData, role: 'ADMIN' },
           {
             headers: { Authorization: `Bearer ${token}` },
           }
         );
       }
+
       handleClose();
       fetchUsers();
+      // Reset error state
+      setError('');
     } catch (error) {
       console.error('Error saving admin:', error);
-      setEditError(error.response?.data?.error || 'Failed to save admin');
+      
+      // Extract detailed error information
+      const serverError = error.response?.data?.error || '';
+      
+      // Handle specific unique constraint violations
+      if (serverError.includes('Unique constraint failed')) {
+        if (serverError.includes('userId')) {
+          setEditError('This User ID is already taken. Please use a different one.');
+        } else if (serverError.includes('email')) {
+          setEditError('This Email address is already registered. Please use a different one.');
+        } else if (serverError.includes('addharCard')) {
+          setEditError('This Addhar Card number is already registered. Please check the number.');
+        } else if (serverError.includes('mobile')) {
+          setEditError('This Mobile number is already registered. Please use a different one.');
+        } else {
+          setEditError('A field with unique constraint failed. Please check your inputs.');
+        }
+      } else if (serverError.includes('Admin can only create employee users')) {
+        setEditError('You do not have permission to create admin users.');
+      } else {
+        // Generic error with details if available
+        const errorMessage = error.response?.data?.error 
+          || error.response?.data?.message
+          || error.message
+          || 'Failed to save admin. Please check your inputs and try again.';
+        
+        setEditError(errorMessage);
+      }
+      
+      // Log additional details for debugging
+      if (error.response) {
+        console.log('Error response data:', error.response.data);
+        console.log('Error status:', error.response.status);
+        console.log('Error headers:', error.response.headers);
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -268,6 +390,16 @@ const SuperadminDashboard = () => {
       console.error('Error resetting password:', error);
       setResetPasswordError(error.response?.data?.error || 'Failed to reset password');
     }
+  };
+
+  const handleViewClick = (user) => {
+    setViewUser(user);
+    setViewDialogOpen(true);
+  };
+
+  const handleViewClose = () => {
+    setViewDialogOpen(false);
+    setViewUser(null);
   };
 
   return (
@@ -399,6 +531,12 @@ const SuperadminDashboard = () => {
                   </TableCell>
                   <TableCell>
                     <IconButton 
+                      onClick={() => handleViewClick(user)}
+                      sx={{ color: 'info.main' }}
+                    >
+                      <VisibilityOutlinedIcon />
+                    </IconButton>
+                    <IconButton 
                       onClick={() => handleOpen(user)}
                       sx={{ color: 'primary.main' }}
                     >
@@ -423,7 +561,7 @@ const SuperadminDashboard = () => {
                 <TableRow>
                   <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
                     <Typography color="textSecondary">
-                      No users found matching your search criteria
+                      {loading ? 'Loading users...' : 'No users found matching your search criteria'}
                     </Typography>
                   </TableCell>
                 </TableRow>
@@ -452,6 +590,7 @@ const SuperadminDashboard = () => {
                 value={formData.userId}
                 onChange={handleChange}
                 helperText="Only letters and numbers allowed"
+                error={!!editError && editError.includes('User ID')}
               />
               <TextField
                 margin="normal"
@@ -461,6 +600,7 @@ const SuperadminDashboard = () => {
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
+                error={!!editError && editError.includes('name')}
               />
               <TextField
                 margin="normal"
@@ -471,6 +611,53 @@ const SuperadminDashboard = () => {
                 type="email"
                 value={formData.email}
                 onChange={handleChange}
+                error={!!editError && editError.includes('Email')}
+              />
+              <TextField
+                margin="normal"
+                fullWidth
+                label="Addhar Card"
+                name="addharCard"
+                value={formData.addharCard}
+                onChange={handleChange}
+                helperText="Must be exactly 12 digits (unique identifier)"
+                error={!!editError && editError.includes('Addhar')}
+                InputProps={{
+                  inputProps: { 
+                    maxLength: 12,
+                    inputMode: 'numeric',
+                    pattern: '[0-9]*' 
+                  }
+                }}
+              />
+              <TextField
+                margin="normal"
+                fullWidth
+                label="Date of Birth"
+                name="dob"
+                type="date"
+                value={formData.dob}
+                onChange={handleChange}
+                InputLabelProps={{ shrink: true }}
+                error={!!editError && editError.includes('birth')}
+              />
+              <TextField
+                margin="normal"
+                fullWidth
+                label="Mobile Number"
+                name="mobile" 
+                value={formData.mobile}
+                onChange={handleChange}
+                helperText="Must be exactly 10 digits - will be stored with +91 prefix"
+                error={!!editError && editError.includes('Mobile')}
+                InputProps={{
+                  startAdornment: <InputAdornment position="start">+91</InputAdornment>,
+                  inputProps: { 
+                    maxLength: 10,
+                    inputMode: 'numeric',
+                    pattern: '[0-9]*' 
+                  }
+                }}
               />
               {!selectedAdmin && (
                 <TextField
@@ -483,6 +670,7 @@ const SuperadminDashboard = () => {
                   value={formData.password}
                   onChange={handleChange}
                   helperText="Must be at least 8 characters with uppercase, lowercase and number"
+                  error={!!editError && editError.includes('Password')}
                   InputProps={{
                     endAdornment: (
                       <IconButton
@@ -498,9 +686,105 @@ const SuperadminDashboard = () => {
             </Box>
           </DialogContent>
           <DialogActions>
-            <Button onClick={handleClose}>Cancel</Button>
-            <Button onClick={handleSubmit} variant="contained" color="primary">
-              {selectedAdmin ? 'Update' : 'Create'}
+            <Button onClick={handleClose} disabled={loading}>Cancel</Button>
+            <Button 
+              onClick={handleSubmit} 
+              variant="contained" 
+              color="primary"
+              disabled={loading}
+            >
+              {loading ? 'Saving...' : (selectedAdmin ? 'Update' : 'Create')}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        <Dialog 
+          open={viewDialogOpen} 
+          onClose={handleViewClose}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle sx={{ 
+            bgcolor: '#272727', 
+            color: 'white',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <Typography variant="h6">Admin Details</Typography>
+            <IconButton color="inherit" onClick={handleViewClose} size="small">
+              <Typography variant="h6">×</Typography>
+            </IconButton>
+          </DialogTitle>
+          <DialogContent sx={{ mt: 2 }}>
+            {viewUser && (
+              <Box>
+                <Paper elevation={0} sx={{ p: 2, mb: 2, bgcolor: '#f8f9fa', borderRadius: 2 }}>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12}>
+                      <Typography variant="h6" color="primary" gutterBottom>
+                        {viewUser.name}
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          display: 'inline-block',
+                          px: 1,
+                          py: 0.5,
+                          borderRadius: 1,
+                          bgcolor: viewUser.role === 'ADMIN' ? 'primary.light' : 'success.light',
+                          color: viewUser.role === 'ADMIN' ? 'primary.dark' : 'success.dark',
+                        }}
+                      >
+                        {viewUser.role}
+                      </Typography>
+                    </Grid>
+                  </Grid>
+                </Paper>
+                
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <Paper elevation={0} sx={{ p: 2, height: '100%', bgcolor: '#f8f9fa', borderRadius: 2 }}>
+                      <Typography variant="subtitle2" color="textSecondary">User ID</Typography>
+                      <Typography variant="body1" gutterBottom>{viewUser.userId}</Typography>
+                      
+                      <Typography variant="subtitle2" color="textSecondary" sx={{ mt: 2 }}>Email</Typography>
+                      <Typography variant="body1" gutterBottom>{viewUser.email}</Typography>
+                      
+                      <Typography variant="subtitle2" color="textSecondary" sx={{ mt: 2 }}>Created At</Typography>
+                      <Typography variant="body1">
+                        {new Date(viewUser.createdAt).toLocaleString()}
+                      </Typography>
+                    </Paper>
+                  </Grid>
+                  
+                  <Grid item xs={12} sm={6}>
+                    <Paper elevation={0} sx={{ p: 2, height: '100%', bgcolor: '#f8f9fa', borderRadius: 2 }}>
+                      <Typography variant="subtitle2" color="textSecondary">Date of Birth</Typography>
+                      <Typography variant="body1" gutterBottom>
+                        {viewUser.dob ? new Date(viewUser.dob).toLocaleDateString() : 'Not provided'}
+                      </Typography>
+                      
+                      <Typography variant="subtitle2" color="textSecondary" sx={{ mt: 2 }}>Mobile</Typography>
+                      <Typography variant="body1" gutterBottom>
+                        {viewUser.mobile ? `+91 ${viewUser.mobile}` : 'Not provided'}
+                      </Typography>
+                      
+                      <Typography variant="subtitle2" color="textSecondary" sx={{ mt: 2 }}>Addhar Card</Typography>
+                      <Typography variant="body1">{viewUser.addharCard || 'Not provided'}</Typography>
+                    </Paper>
+                  </Grid>
+                </Grid>
+              </Box>
+            )}
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 3 }}>
+            <Button 
+              onClick={handleViewClose} 
+              variant="contained" 
+              sx={{ bgcolor: '#272727', '&:hover': { bgcolor: '#1a1a1a' } }}
+            >
+              Close
             </Button>
           </DialogActions>
         </Dialog>

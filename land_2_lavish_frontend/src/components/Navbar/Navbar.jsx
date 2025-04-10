@@ -2,6 +2,9 @@ import { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { AccountCircle } from "@mui/icons-material";
 import axios from "axios";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
+
 
 export default function Navbar() {
   const [isMastersOpen, setIsMastersOpen] = useState(false);
@@ -18,7 +21,9 @@ export default function Navbar() {
     retypePassword: '',
   });
   const [resetPasswordError, setResetPasswordError] = useState('');
-
+  const [showOldPassword, setShowOldPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showRetypePassword, setShowRetypePassword] = useState(false);
   const mastersRef = useRef(null);
   const transactionRef = useRef(null);
   const reportsRef = useRef(null);
@@ -388,30 +393,61 @@ export default function Navbar() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Old Password</label>
-                <input
-                  type="password"
-                  value={resetPasswordData.oldPassword}
-                  onChange={(e) => setResetPasswordData({ ...resetPasswordData, oldPassword: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">New Password</label>
-                <input
-                  type="password"
-                  value={resetPasswordData.newPassword}
-                  onChange={(e) => setResetPasswordData({ ...resetPasswordData, newPassword: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                />
+                <div className="relative">
+                  <input
+                    type={showOldPassword ? "text" : "password"}
+                    value={resetPasswordData.oldPassword}
+                    onChange={(e) => setResetPasswordData({ ...resetPasswordData, oldPassword: e.target.value })}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    placeholder="Enter Old Password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                    onClick={() => setShowOldPassword(!showOldPassword)}
+                  >
+                    {showOldPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                  </button>
+                </div>
+                <label className="block text-sm font-medium text-gray-700 mt-4">New Password</label>
+                <div className="relative">
+                  <input
+                    type={showNewPassword ? "text" : "password"}
+                    value={resetPasswordData.newPassword}
+                    onChange={(e) => setResetPasswordData({ ...resetPasswordData, newPassword: e.target.value })}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    placeholder="Enter New Password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                  >
+                    {showNewPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                  </button>
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Retype New Password</label>
-                <input
-                  type="password"
-                  value={resetPasswordData.retypePassword}
-                  onChange={(e) => setResetPasswordData({ ...resetPasswordData, retypePassword: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                />
+                <div className="relative">
+                  <input
+                    type={showRetypePassword ? "text" : "password"}
+                    value={resetPasswordData.retypePassword}
+                    onChange={(e) => setResetPasswordData({ ...resetPasswordData, retypePassword: e.target.value })}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    placeholder="Retype New Password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                    onClick={() => setShowRetypePassword(!showRetypePassword)}
+                  >
+                    {showRetypePassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                  </button>
+                </div>
               </div>
             </div>
             <div className="mt-6 flex justify-end space-x-3">
