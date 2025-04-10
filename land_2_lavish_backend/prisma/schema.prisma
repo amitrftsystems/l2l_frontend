@@ -175,6 +175,7 @@ model Project {
   landmark        String?
   plan            String
   size            Int?
+  measuring_unit  String?
   sign_image_name String
   created_at      DateTime        @default(now())
   installment_plan InstallmentPlan @relation(fields: [plan], references: [installment_no])
@@ -189,6 +190,7 @@ model Property {
   customer_id     String?
   property_type   String?
   size            Int
+  measuring_unit  String?
   allotment_date  DateTime?
   remark          String?
   customer        Customer? @relation(fields: [customer_id], references: [customer_id], onDelete: SetNull)

@@ -2,13 +2,13 @@ import prisma from "../../db/index.js";
 
 export const addNewPropertySize = async (req, res) => {
   try {
-    const { project_id, property_size } = req.body;
+    const { project_id, property_size, measuring_unit } = req.body;
 
     // Validate required fields
-    if (!project_id || !property_size) {
+    if (!project_id || !property_size || !measuring_unit) {
       return res.status(400).json({
         success: false,
-        message: "Project ID and property size are required"
+        message: "Project ID, property size, and measuring unit are required"
       });
     }
 
@@ -39,10 +39,13 @@ export const addNewPropertySize = async (req, res) => {
       });
     }
 
-    // Update the project with the new size
+    // Update the project with the new size and measuring unit
     const updatedProject = await prisma.project.update({
       where: { project_id: parseInt(project_id) },
-      data: { size: parseInt(property_size) }
+      data: { 
+        size: parseInt(property_size),
+        measuring_unit: measuring_unit
+      }
     });
 
     return res.status(200).json({

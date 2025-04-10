@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
-import { X } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+// import { X } from "lucide-react";
 
 const AddPropertySize = () => {
   const [formData, setFormData] = useState({
@@ -26,7 +26,7 @@ const AddPropertySize = () => {
     const fetchProjects = async () => {
       try {
         const response = await fetch(
-          "https://land-2-lavish-backend-chi.vercel.app/api/master/get-projects"
+          "http://localhost:5000/api/master/get-projects"
         );
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const data = await response.json();
@@ -120,7 +120,7 @@ const AddPropertySize = () => {
 
     try {
       const response = await fetch(
-        "https://land-2-lavish-backend-chi.vercel.app/api/master/add-new-property-size",
+        "http://localhost:5000/api/master/add-new-property-size",
         {
           method: "POST",
           headers: {

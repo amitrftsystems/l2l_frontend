@@ -12,6 +12,7 @@ const AddProject = () => {
     landmark: "",
     plan: "",
     size: "",
+    measuring_unit: "",
     sign_image_name: "",
   });
 
@@ -21,6 +22,7 @@ const AddProject = () => {
     address: "",
     plan: "",
     size: "",
+    measuring_unit: "",
   });
 
   const [touched, setTouched] = useState({
@@ -29,6 +31,7 @@ const AddProject = () => {
     address: false,
     plan: false,
     size: false,
+    measuring_unit: false,
   });
 
   const [installmentOptions, setInstallmentOptions] = useState([]);
@@ -99,6 +102,8 @@ const AddProject = () => {
       !value
     ) {
       error = "Please fill out this field";
+    } else if (field === "measuring_unit" && !value) {
+      error = "Measuring unit is required";
     }
     setErrors((prev) => ({ ...prev, [field]: error }));
     return error;
@@ -132,6 +137,10 @@ const AddProject = () => {
       newErrors.size = "Size is required";
       isValid = false;
     }
+    if (!formData.measuring_unit) {
+      newErrors.measuring_unit = "Measuring unit is required";
+      isValid = false;
+    }
     setErrors(newErrors);
     setTouched({
       project_name: true,
@@ -139,6 +148,7 @@ const AddProject = () => {
       address: true,
       plan: true,
       size: true,
+      measuring_unit: true,
     });
 
     if (!isValid) {
@@ -451,8 +461,47 @@ const AddProject = () => {
               name="size"
               value={formData.size}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-black rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+              onBlur={() => handleBlur("size")}
+              className={`w-full px-3 py-2 border ${
+                errors.size && touched.size
+                  ? "border-red-500 focus:ring-red-500"
+                  : "border-black focus:ring-green-500"
+              } rounded-md focus:outline-none focus:ring-2`}
             />
+            {errors.size && touched.size && (
+              <p className="text-red-500 text-xs mt-1 flex items-center">
+                {errors.size}
+              </p>
+            )}
+          </div>
+
+          {/* Measuring Unit */}
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-gray-700">
+              Measuring Unit <span className="text-red-500">*</span>
+            </label>
+            <select
+              name="measuring_unit"
+              value={formData.measuring_unit}
+              onChange={handleChange}
+              onBlur={() => handleBlur("measuring_unit")}
+              className={`w-full px-3 py-2 border ${
+                errors.measuring_unit && touched.measuring_unit
+                  ? "border-red-500 focus:ring-red-500"
+                  : "border-black focus:ring-green-500"
+              } rounded-md focus:outline-none focus:ring-2`}
+            >
+              <option value="">Select unit</option>
+              <option value="sq. ft.">sq. ft.</option>
+              <option value="sq. metre">sq. metre</option>
+              <option value="acres">acres</option>
+              <option value="hectare">hectare</option>
+            </select>
+            {errors.measuring_unit && touched.measuring_unit && (
+              <p className="text-red-500 text-xs mt-1 flex items-center">
+                {errors.measuring_unit}
+              </p>
+            )}
           </div>
 
           {/* Sign Image Name */}
