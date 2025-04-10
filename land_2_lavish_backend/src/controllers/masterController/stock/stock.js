@@ -1,4 +1,82 @@
-import prisma from "../db/index.js";
+import prisma from "../../../db/index.js";
+
+
+export const checkProject = async (req, res) => {
+  try {
+    const { project_id } = req.query;
+    const project = await prisma.project.findUnique({
+      where: { project_id: parseInt(project_id) },
+      select: { project_id: true },
+    });
+
+    res.json({ exists: !!project });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Check if property exists or create it
+export const checkOrCreateProperty = async (req, res) => {
+  try {
+    const { property_id, property_type, size } = req.body;
+
+    let property = await prisma.property.findUnique({
+      where: { property_id: parseInt(property_id) },
+    });
+
+    if (!property) {
+      property = await prisma.property.create({
+        data: {
+          property_id: parseInt(property_id),
+          property_type,
+          size: parseInt(size) || null,
+        },
+      });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+
+
+export const checkStockProperty = async (req, res) => {
+  try {
+    const { project_id, property_id } = req.query;
+
+    if (!project_id || !property_id) {
+      return res.status(400).json({
+        success: false,
+        message: "Project ID and Property ID are required"
+      });
+    }
+
+    const stock = await prisma.stock.findFirst({
+      where: {
+        project_id: parseInt(project_id),
+        property_id: parseInt(property_id)
+      }
+    });
+
+    return res.status(200).json({
+      success: true,
+      exists: !!stock,
+      data: stock
+    });
+
+  } catch (error) {
+    console.error("Error checking stock property:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message
+    });
+  }
+};
+
+
 
 export const addStock = async (req, res) => {
   try {
@@ -12,9 +90,9 @@ export const addStock = async (req, res) => {
       remarks,
       on_hold_status,
       hold_till_date,
-      hold_remarks
+      // hold_remarks
     } = req.body;
-
+ 
     if (!project_id || !property_id || !property_type || !size) {
       return res.status(400).json({
         success: false,
@@ -42,7 +120,7 @@ export const addStock = async (req, res) => {
         remarks,
         on_hold_status,
         hold_till_date: hold_till_date ? new Date(hold_till_date) : null,
-        hold_remarks,
+        // hold_remarks,
       },
     });
 
@@ -67,7 +145,7 @@ export const updateStock = async (req, res) => {
         remarks,
         on_hold_status,
         hold_till_date,
-        hold_remarks
+        // hold_remarks
       } = req.body;
   
       if (!stock_id) {
@@ -86,7 +164,7 @@ export const updateStock = async (req, res) => {
           remarks,
           on_hold_status,
           hold_till_date: hold_till_date ? new Date(hold_till_date) : null,
-          hold_remarks,
+          // hold_remarks,
         },
       });
   

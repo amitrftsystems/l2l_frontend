@@ -14,23 +14,36 @@ enum Role {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  userId    String   @unique
-  email     String   @unique
-  password  String
-  role      Role
-  name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  email       String   @unique
+  password    String
+  name        String
+  role        Role
+  addharCard   String?  @unique
+  dob         DateTime?    @map("dob")
+  mobile      String?   @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   // Relationships
-  createdBy    User?   @relation("CreatedUsers", fields: [createdById], references: [id])
+  createdBy    User?   @relation("UserCreations", fields: [createdById], references: [id])
   createdById  String?
-  createdUsers User[]  @relation("CreatedUsers")
-} 
+  createdUsers User[]  @relation("UserCreations")
+  logs         Log[]
+}
+
+model Log {
+  id        String   @id @default(uuid())
+  userId    String
+  action    String
+  details   String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+}
 
 model Booking {
-   booking_id      Int      @id @default(autoincrement())
+  booking_id      Int      @id @default(autoincrement())
   customer_id     String   @db.VarChar(50)
   booking_date    DateTime @default(now())
   name            String   @db.VarChar(255)
@@ -162,6 +175,7 @@ model Project {
   landmark        String?
   plan            String
   size            Int?
+  measuring_unit  String?
   sign_image_name String
   created_at      DateTime        @default(now())
   installment_plan InstallmentPlan @relation(fields: [plan], references: [installment_no])
@@ -176,6 +190,7 @@ model Property {
   customer_id     String?
   property_type   String?
   size            Int
+  measuring_unit  String?
   allotment_date  DateTime?
   remark          String?
   customer        Customer? @relation(fields: [customer_id], references: [customer_id], onDelete: SetNull)

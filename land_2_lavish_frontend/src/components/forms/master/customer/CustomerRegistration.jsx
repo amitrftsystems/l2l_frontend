@@ -292,6 +292,7 @@ const CustomerRegistration = () => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            "Authorization": `Bearer ${localStorage.getItem('token')}`
           },
           body: JSON.stringify(payload),
           signal: controller.signal,
@@ -302,13 +303,25 @@ const CustomerRegistration = () => {
 
       if (!response.ok) {
         const errorData = await response.json();
+        console.log("Error response:", errorData);
+
+        if (response.status === 409) {
+          const conflictError = {
+            name: 'ValidationError',
+            message: 'Duplicate entry found',
+            errors: {
+              submit: 'This customer already exists. Please check the following fields: ' +
+                (errorData.message || 'Email, Phone, PAN, Aadhar, or Customer ID might be duplicate')
+            }
+          };
+          throw conflictError;
+        }
+        
         
         // Handle validation errors from backend
         if (errorData.errors) {
-          // Convert backend errors to our format
           const backendErrors = {};
           errorData.errors.forEach(err => {
-            // Map backend field names to our form field names
             const fieldMap = {
               'mobile': 'Phone',
               'email': 'Email',
@@ -347,9 +360,16 @@ const CustomerRegistration = () => {
     } catch (error) {
       console.error("Submission error:", error);
 
-      if (error.name === 'ValidationError' && error.errors) {
-        // Set the specific field errors from backend
-        setErrors(error.errors);
+      if (error.name === 'ValidationError') {
+        if (error.errors) {
+          // Set the specific field errors from backend
+          setErrors(error.errors);
+        } else {
+          // Handle case where errors object is undefined
+          setErrors({
+            submit: error.message || 'Validation failed. Please check your input.'
+          });
+        }
       } else {
         let errorMsg = "Registration failed. Please try again.";
         if (error.name === "AbortError") {

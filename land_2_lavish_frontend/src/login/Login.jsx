@@ -65,7 +65,7 @@ const Login = () => {
 
       switch (response.data.user.role) {
         case "SUPERADMIN":
-          navigate("/superadmin");
+          navigate("/superadmin/dashboard");
           break;
         case "ADMIN":
           navigate("/admin");

@@ -29,11 +29,12 @@ import LeanBank from "./components/forms/master/leanbank/LeanBank.jsx";
 
 import Login from "./login/Login.jsx";
 import SuperAdminDashboard from "./superAdminDashboard/SuperadminDashboard.jsx";
-
+import SuperAdminNavbar from "./superAdminDashboard/SuperAdminNavbar.jsx";
 
 {/* Utilities imports */}
 import Employees from "./components/utilites/Employee.jsx";
 import AllotmentLetter from "./components/utilites/AllotmentLetter.jsx";
+import LogReports from "./components/utilites/LogReports.jsx";
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -57,14 +58,9 @@ ProtectedRoute.propTypes = {
 };
 
 function App() {
-  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
     setLoading(false);
   }, []);
 
@@ -76,31 +72,38 @@ function App() {
     <ProjectUnitProvider>
       <Router>
         <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/" element={<Navigate to="/login" replace />} />
-        <Route path="/unauthorized" element={<div>Unauthorized Access!</div>} />
-        <Route path="/customer-info" element={
-            <ProtectedRoute allowedRoles={['SUPERADMIN', 'ADMIN', 'EMPLOYEE']}>
-              <CustInfo />
-            </ProtectedRoute>
-          } />
+          <Route path="/login" element={<Login />} />
+          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/unauthorized" element={<div>Unauthorized Access!</div>} />
+          
+          {/* Superadmin Routes */}
           <Route path="/superadmin" element={
             <ProtectedRoute allowedRoles={['SUPERADMIN']}>
+              <Navigate to="/superadmin/dashboard" replace />
+            </ProtectedRoute>
+          } />
+          <Route path="/superadmin/dashboard" element={
+            <ProtectedRoute allowedRoles={['SUPERADMIN']}>
+              <SuperAdminNavbar />
               <SuperAdminDashboard />
             </ProtectedRoute>
           } />
+          
+          {/* Admin Routes */}
           <Route path="/admin" element={
             <ProtectedRoute allowedRoles={['ADMIN']}>
               <HomePage />
             </ProtectedRoute>
           } />
+          
+          {/* Employee Routes */}
           <Route path="/employee" element={
             <ProtectedRoute allowedRoles={['EMPLOYEE']}>
               <HomePage />
             </ProtectedRoute>
           } />
 
-          {/* Protect all other routes */}
+          {/* Other protected routes */}
           <Route path="/customer-info" element={
             <ProtectedRoute allowedRoles={['ADMIN', 'EMPLOYEE']}>
               <CustInfo />
@@ -200,6 +203,11 @@ function App() {
           <Route path="/utilities/allotment-letter" element={
             <ProtectedRoute allowedRoles={['ADMIN', 'EMPLOYEE']}>
               <AllotmentLetter />
+            </ProtectedRoute>
+          } />
+          <Route path="/utilities/log-reports" element={
+            <ProtectedRoute allowedRoles={['ADMIN', 'EMPLOYEE']}>
+              <LogReports />
             </ProtectedRoute>
           } />
         </Routes>
