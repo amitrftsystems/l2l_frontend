@@ -35,6 +35,7 @@ import SuperAdminNavbar from "./superAdminDashboard/SuperAdminNavbar.jsx";
 import Employees from "./components/utilites/Employee.jsx";
 import AllotmentLetter from "./components/utilites/AllotmentLetter.jsx";
 import LogReports from "./components/utilites/LogReports.jsx";
+import UpcomingBirthdays from "./components/utilites/Birthdays.jsx";
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -208,6 +209,11 @@ function App() {
           <Route path="/utilities/log-reports" element={
             <ProtectedRoute allowedRoles={['ADMIN', 'EMPLOYEE']}>
               <LogReports />
+            </ProtectedRoute>
+          } />
+          <Route path="/utilities/upcoming-birthdays" element={
+            <ProtectedRoute allowedRoles={['ADMIN', 'EMPLOYEE']}>
+              <UpcomingBirthdays />
             </ProtectedRoute>
           } />
         </Routes>
