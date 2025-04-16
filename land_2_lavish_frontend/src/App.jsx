@@ -39,6 +39,7 @@ import UpcomingBirthdays from "./components/utilites/Birthdays.jsx";
 
 {/*transaction imports */}
 import BBAForm from "./components/forms/transactions/BbaForm.jsx";
+import DespatchForm from "./components/forms/transactions/DespatchForm.jsx";
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -202,6 +203,12 @@ function App() {
               <BBAForm/>
             </ProtectedRoute>
           } />
+           <Route path="/transaction/despatch" element={
+            <ProtectedRoute allowedRoles={['ADMIN', 'EMPLOYEE']}>
+              <DespatchForm/>
+            </ProtectedRoute>
+          } />
+          
 
           {/* Utilities Routes */}
           <Route path="/utilities/manage-employees" element={

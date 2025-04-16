@@ -255,7 +255,7 @@ export default function Navbar() {
                   },
                   { name: "Buyer Agreements", link: "/transaction/BBA" },
                   { name: "Calling Feedbacks", link: "/transaction/feedback" },
-                  { name: "Cust. Correspondence", link: "#loan-bank" },
+                  { name: "Cust. Correspondence", link: "/transaction/despatch" },
                 ].map((item, index) => (
                   <li
                     key={index}
