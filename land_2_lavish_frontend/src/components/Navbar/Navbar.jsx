@@ -333,7 +333,7 @@ export default function Navbar() {
                   { name: "Allotment Letter", link: "/utilities/allotment-letter" },
                   { name: "Customer Care", link: "#unit-size" },
                   { name: "Log Reports", link: "/utilities/log-reports" },
-                  { name: "Upcoming Birthdays", link: "#broker" },
+                  { name: "Upcoming Birthdays", link: "/utilities/upcoming-birthdays" },
                 ].map((item, index) => (
                   <li key={index} className="px-4 py-2 hover:bg-gray-700">
                     <a href={item.link}>{item.name}</a>
