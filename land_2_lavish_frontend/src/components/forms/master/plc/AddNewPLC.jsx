@@ -140,7 +140,7 @@ const AddNewPLC = () => {
 
   return (
     <>
-      <FormsNavbar />
+      
       <div className="flex justify-center items-center min-h-screen bg-[#272727] p-4">
         <form
           onSubmit={handleSubmit}

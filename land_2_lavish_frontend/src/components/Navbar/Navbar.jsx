@@ -179,10 +179,7 @@ export default function Navbar() {
                         name: "Add",
                         link: "/masters/add-customer",
                       },
-                      {
-                        name: "Edit",
-                        link: "/masters/edit-customer",
-                      },
+        
                     ],
                   },
                   { name: "Co-Applicant", link: "/masters/add-co-applicant" },
@@ -256,11 +253,9 @@ export default function Navbar() {
                     name: "Unit Transfer (A to B)",
                     link: "/transaction/transfer-charges",
                   },
-                  { name: "Buyer Agreements", link: "#customer-registration" },
-                  { name: "Unit Transfer (A to B)", link: "#broker" },
-                  { name: "Buyer Agreements", link: "/bba" },
+                  { name: "Buyer Agreements", link: "/transaction/BBA" },
                   { name: "Calling Feedbacks", link: "/transaction/feedback" },
-                  { name: "Cust. Correspondence", link: "#loan-bank" },
+                  { name: "Cust. Correspondence", link: "/transaction/despatch" },
                 ].map((item, index) => (
                   <li
                     key={index}

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import PropTypes from 'prop-types';
 import { X } from "lucide-react";
 
+
 const ErrorMessage = ({ error }) => (
   <div className="text-xs text-red-600 mt-1 flex items-start">
     <svg
@@ -47,6 +48,7 @@ const InputField = React.memo(
     const showError = showMandatoryError || error;
 
     return (
+      <>
       <div className="mb-4 flex items-start">
         <label className="w-1/4 text-sm font-medium mt-2">
           {label} {required && <span className="text-red-600">*</span>}
@@ -80,6 +82,7 @@ const InputField = React.memo(
           {showValidationError && <ErrorMessage error={validationError} />}
         </div>
       </div>
+      </>
     );
   }
 );

@@ -37,6 +37,10 @@ import AllotmentLetter from "./components/utilites/AllotmentLetter.jsx";
 import LogReports from "./components/utilites/LogReports.jsx";
 import UpcomingBirthdays from "./components/utilites/Birthdays.jsx";
 
+{/*transaction imports */}
+import BBAForm from "./components/forms/transactions/BbaForm.jsx";
+import DespatchForm from "./components/forms/transactions/DespatchForm.jsx";
+
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const user = JSON.parse(localStorage.getItem("user"));
@@ -194,6 +198,17 @@ function App() {
               <CallingFeedback />
             </ProtectedRoute>
           } />
+           <Route path="/transaction/BBA" element={
+            <ProtectedRoute allowedRoles={['ADMIN', 'EMPLOYEE']}>
+              <BBAForm/>
+            </ProtectedRoute>
+          } />
+           <Route path="/transaction/despatch" element={
+            <ProtectedRoute allowedRoles={['ADMIN', 'EMPLOYEE']}>
+              <DespatchForm/>
+            </ProtectedRoute>
+          } />
+          
 
           {/* Utilities Routes */}
           <Route path="/utilities/manage-employees" element={
