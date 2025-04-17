@@ -1,438 +1,565 @@
-import  { useState } from "react";
-// import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 
-const AddNewPlan = () => {
-  const [formData, setFormData] = useState({
-    installment_no: "",
-    days: "",
-    date: "",
-    percentage: "",
-    amount: "",
-    remarks: "",
-  });
+function AddNewPlan() {
+  const [planName, setPlanName] = useState("");
+  const [numInstallments, setNumInstallments] = useState("");
+  const [tableData, setTableData] = useState(null);
   const [errors, setErrors] = useState({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
-  // const navigate = useNavigate();
+  const [touched, setTouched] = useState({});
 
-  const handleChange = (e) => {
+  // Handle form input changes and validate
+  const handleFormChange = (e) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+    if (name === "planName") {
+      setPlanName(value);
+    } else if (name === "numInstallments") {
+      setNumInstallments(value);
+    }
+    validateField(name, value);
+  };
 
-    // Clear error when user types
-    setErrors((prev) => ({ ...prev, [name]: "" }));
+  // Handle form blur to mark fields as touched
+  const handleFormBlur = (e) => {
+    const { name } = e.target;
+    setTouched({ ...touched, [name]: true });
+    validateField(name, name === "planName" ? planName : numInstallments);
+  };
 
-    // Clear both days/date errors when either is changed
-    if (name === "days" || name === "date") {
-      setErrors((prev) => ({ ...prev, days: "", date: "" }));
+  // Validate form and table fields
+  const validateField = (name, value, rowIndex = null) => {
+    let error = "";
+    if (name === "planName") {
+      if (!value) error = "Plan name is required";
+    } else if (name === "numInstallments") {
+      if (!value) {
+        error = "Number of installments is required";
+      } else if (isNaN(Number(value))) {
+        error = "Must be a number";
+      } else if (Number(value) < 1) {
+        error = "Must be at least 1";
+      }
+    } else if (
+      name === "dueAfterDays" ||
+      name === "percentage" ||
+      name === "lumpSum"
+    ) {
+      if (value && isNaN(Number(value))) {
+        error = "Must be a number";
+      } else if (value && Number(value) < 0) {
+        error = "Must be positive";
+      }
     }
 
-    // Clear both percentage/amount errors when either is changed
-    if (name === "percentage" || name === "amount") {
-      setErrors((prev) => ({ ...prev, percentage: "", amount: "" }));
+    if (rowIndex !== null) {
+      setErrors((prev) => ({
+        ...prev,
+        [name + "-" + rowIndex]: error,
+      }));
+    } else {
+      setErrors((prev) => ({ ...prev, [name]: error }));
     }
   };
 
-  const handleBlur = (e) => {
-    const { name, value } = e.target;
-
-    // Validate percentage range
-    if (name === "percentage" && value) {
-      const percentageValue = parseFloat(value);
-      if (percentageValue < 0 || percentageValue > 100) {
-        setErrors((prev) => ({
-          ...prev,
-          percentage: "Percentage must be between 0 and 100",
-        }));
-      }
-    }
-
-    // Validate amount non-negative
-    if (name === "amount" && value) {
-      const amountValue = parseFloat(value);
-      if (amountValue < 0) {
-        setErrors((prev) => ({
-          ...prev,
-          amount: "Amount cannot be negative",
-        }));
-      }
-    }
-
-    // Validate days positive
-    if (name === "days" && value) {
-      const daysValue = parseInt(value);
-      if (daysValue <= 0) {
-        setErrors((prev) => ({
-          ...prev,
-          days: "Days must be greater than 0",
-        }));
-      }
-    }
-  };
-
-  const validateForm = () => {
-    let newErrors = {};
-
-    if (!formData.installment_no)
-      newErrors.installment_no = "Installment No is required";
-
-    // Days/date validation
-    if (!formData.days && !formData.date) {
-      newErrors.days = "Either days or date is required";
-      newErrors.date = "Either days or date is required";
-    }
-
-    // Percentage/amount validation
-    if (!formData.percentage && !formData.amount) {
-      newErrors.percentage = "Either percentage or amount is required";
-      newErrors.amount = "Either percentage or amount is required";
-    }
-
-    // Individual field validations
-    if (formData.percentage) {
-      const percentageValue = parseFloat(formData.percentage);
-      if (percentageValue < 0 || percentageValue > 100) {
-        newErrors.percentage = "Percentage must be between 0 and 100";
-      }
-    }
-    if (formData.amount) {
-      const amountValue = parseFloat(formData.amount);
-      if (amountValue < 0) {
-        newErrors.amount = "Amount cannot be negative";
-      }
-    }
-    if (formData.days) {
-      const daysValue = parseInt(formData.days);
-      if (daysValue <= 0) {
-        newErrors.days = "Days must be greater than 0";
-      }
-    }
-
-    return newErrors;
-  };
-
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    const newErrors = validateForm();
+    const installments = parseInt(numInstallments);
+    let newErrors = {};
+    if (!planName) newErrors.planName = "Plan name is required";
+    if (!numInstallments) {
+      newErrors.numInstallments = "Number of installments is required";
+    } else if (isNaN(installments) || installments < 1) {
+      newErrors.numInstallments = "Must be a number greater than 0";
+    }
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
     }
 
-    setIsSubmitting(true);
+    let newRows;
+    if (tableData && tableData.rows) {
+      const existingRows = tableData.rows;
+      const filledRows = existingRows.filter(
+        (row) =>
+          row.dueAfterDays ||
+          row.dueDate ||
+          row.percentage ||
+          row.lumpSum ||
+          row.remarks
+      ).length;
+      if (filledRows > installments) {
+        const confirm = window.confirm(
+          `Reducing the number of rows from ${
+            existingRows.length
+          } to ${installments} will delete data in ${
+            filledRows - installments
+          } row(s). Do you want to proceed?`
+        );
+        if (!confirm) return;
+      }
+
+      newRows = [];
+      for (let i = 0; i < installments; i++) {
+        if (i < existingRows.length) {
+          newRows.push({ ...existingRows[i] });
+        } else {
+          newRows.push({
+            installment: i + 1,
+            dueAfterDays: "",
+            dueDate: "",
+            percentage: "",
+            lumpSum: "",
+            remarks: "",
+            dueFieldActive: null,
+            amountFieldActive: null,
+          });
+        }
+      }
+
+      newRows.forEach((row, index) => {
+        row.installment = index + 1;
+      });
+    } else {
+      newRows = Array.from({ length: installments }, (_, index) => ({
+        installment: index + 1,
+        dueAfterDays: "",
+        dueDate: "",
+        percentage: "",
+        lumpSum: "",
+        remarks: "",
+        dueFieldActive: null,
+        amountFieldActive: null,
+      }));
+    }
+
+    const updatedErrors = {};
+    const updatedTouched = {};
+    Object.keys(errors).forEach((key) => {
+      const [field, rowIndex] = key.split("-");
+      if (!rowIndex || parseInt(rowIndex) < installments) {
+        updatedErrors[key] = errors[key];
+      }
+    });
+    Object.keys(touched).forEach((key) => {
+      const [field, rowIndex] = key.split("-");
+      if (!rowIndex || parseInt(rowIndex) < installments) {
+        updatedTouched[key] = touched[key];
+      }
+    });
+
+    setTableData({ planName, rows: newRows });
+    setErrors(updatedErrors);
+    setTouched(updatedTouched);
+  };
+
+  const handleInputChange = (index, field, value) => {
+    const updatedRows = [...tableData.rows];
+    const row = { ...updatedRows[index] };
+
+    row[field] = value;
+
+    if (field === "dueAfterDays" || field === "dueDate") {
+      if (value === "") {
+        row.dueFieldActive = null;
+      } else if (!row.dueFieldActive) {
+        row.dueFieldActive = field;
+      }
+    } else if (field === "percentage" || field === "lumpSum") {
+      if (value === "") {
+        row.amountFieldActive = null;
+      } else if (!row.amountFieldActive) {
+        row.amountFieldActive = field;
+      }
+    }
+
+    if (
+      field === "dueAfterDays" ||
+      field === "percentage" ||
+      field === "lumpSum"
+    ) {
+      validateField(field, value, index);
+    } else {
+      setErrors((prev) => ({ ...prev, [field + "-" + index]: "" }));
+    }
+
+    updatedRows[index] = row;
+    setTableData({ ...tableData, rows: updatedRows });
+  };
+
+  const handleTableBlur = (index, field) => {
+    setTouched((prev) => ({ ...prev, [field + "-" + index]: true }));
+    validateField(field, tableData.rows[index][field], index);
+  };
+
+  const handleTableSubmit = async () => {
+    if (!tableData) {
+      alert("No table data to submit.");
+      return;
+    }
+
+    const isValid = tableData.rows.every((row) => {
+      const hasDueField = row.dueAfterDays || row.dueDate;
+      const hasAmountField = row.percentage || row.lumpSum;
+      return hasDueField && hasAmountField;
+    });
+
+    if (!isValid) {
+      alert(
+        "Please fill in either Due After Days or Due Date and either Percentage or Lump-sum Amount for each row."
+      );
+      return;
+    }
+
+    let tableErrors = {};
+    tableData.rows.forEach((row, index) => {
+      if (
+        row.dueAfterDays &&
+        (isNaN(Number(row.dueAfterDays)) || Number(row.dueAfterDays) < 0)
+      ) {
+        tableErrors["dueAfterDays-" + index] = "Must be a positive number";
+      }
+      if (
+        row.percentage &&
+        (isNaN(Number(row.percentage)) || Number(row.percentage) < 0)
+      ) {
+        tableErrors["percentage-" + index] = "Must be a positive number";
+      }
+      if (
+        row.lumpSum &&
+        (isNaN(Number(row.lumpSum)) || Number(row.lumpSum) < 0)
+      ) {
+        tableErrors["lumpSum-" + index] = "Must be a positive number";
+      }
+    });
+
+    if (Object.keys(tableErrors).length > 0) {
+      setErrors(tableErrors);
+      return;
+    }
 
     try {
-      const response = await fetch(
-        "http://localhost:5000/api/master/add-new-installment-plan",
+      const planData = {
+        plan_name: tableData.planName,
+        no_of_installments: tableData.rows.length,
+      };
+
+      const planResponse = await fetch(
+        "http://localhost:3001/api/installment-plans",
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            installment_no: formData.installment_no,
-            due_days: formData.days || null,
-            due_date: formData.date || null,
-            percentage: formData.percentage || null,
-            lumpsum_amount: formData.amount || null,
-            remarks: formData.remarks || null,
-          }),
+          body: JSON.stringify(planData),
         }
       );
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        if (data.message) {
-          setErrors((prev) => ({ ...prev, installment_no: data.message }));
-        } else {
-          throw new Error("Something went wrong");
-        }
-        return;
+      if (!planResponse.ok) {
+        throw new Error("Failed to save installment plan");
       }
 
-      setShowSuccessPopup(true);
+      const detailsData = tableData.rows.map((row) => ({
+        plan_name: tableData.planName,
+        installment_number: row.installment,
+        amount: row.lumpSum ? parseFloat(row.lumpSum) : null,
+        percentage: row.percentage ? parseFloat(row.percentage) : null,
+        due_after_days: row.dueAfterDays ? parseInt(row.dueAfterDays) : null,
+        due_date: row.dueDate || null,
+      }));
 
-      // Reset form
-      setFormData({
-        installment_no: "",
-        days: "",
-        date: "",
-        percentage: "",
-        amount: "",
-        remarks: "",
-      });
+      const detailsResponse = await fetch(
+        "http://localhost:3001/api/installment-details",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(detailsData),
+        }
+      );
+
+      if (!detailsResponse.ok) {
+        throw new Error("Failed to save installment details");
+      }
+
+      alert("Installment plan and details submitted successfully!");
+      setPlanName("");
+      setNumInstallments("");
+      setTableData(null);
+      setErrors({});
+      setTouched({});
     } catch (error) {
-      console.error("Error:", error);
-      setErrors((prev) => ({ ...prev, form: error.message }));
-    } finally {
-      setIsSubmitting(false);
+      console.error("Error submitting data:", error);
+      alert("Failed to submit data. Check console for details.");
     }
   };
 
-  const closeSuccessPopup = () => {
-    setShowSuccessPopup(false);
-    // navigate("/");
-  };
-
-
-  const today = new Date().toISOString().split("T")[0];
-
   return (
-    <div className="flex justify-center items-center min-h-screen bg-[#272727] p-30">
-      <form
-        onSubmit={handleSubmit}
-        className="relative w-full max-w-[700px] bg-white p-8 rounded-2xl shadow-lg"
-      >
-        <h2 className="text-2xl font-bold text-center text-black mb-2">
-          Add New Plan
+    <div className="min-h-screen bg-[#272727] flex items-center justify-center p-4">
+      <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-6xl">
+        <h2 className="text-2xl font-bold mb-6 text-center">
+          Add New Installment Plan
         </h2>
 
-        <p className="text-center text-sm text-red-500 mb-6">
-          Fields marked by <span className="text-red-500">*</span> are mandatory
-        </p>
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="mb-6">
+          <div className="flex space-x-4 mb-4">
+            {/* Installment Plan Name */}
+            <div className="w-1/2">
+              <label
+                htmlFor="planName"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Installment Plan Name <span className="text-red-600">*</span>
+              </label>
+              {errors.planName && touched.planName && (
+                <p className="text-red-500 text-sm">{errors.planName}</p>
+              )}
+              <input
+                type="text"
+                id="planName"
+                name="planName"
+                value={planName}
+                onChange={handleFormChange}
+                onBlur={handleFormBlur}
+                className={`w-full p-2 mt-1 border rounded-md focus:outline-none focus:ring-2 ${
+                  errors.planName && touched.planName
+                    ? "border-red-500 focus:ring-red-500"
+                    : "border-black focus:ring-green-500"
+                }`}
+                required
+              />
+            </div>
 
-        {errors.form && (
-          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md text-center">
-            {errors.form}
-          </div>
-        )}
-
-        <div className="space-y-6">
-          {/* Installment No */}
-          <div>
-            <label className="block text-gray-700 font-medium mb-1">
-              Installment No <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="number"
-              name="installment_no"
-              value={formData.installment_no}
-              onChange={handleChange}
-              className={`w-full p-2 border rounded-md focus:outline-none ${
-                errors.installment_no
-                  ? "border-red-500"
-                  : "focus:ring-2 focus:ring-green-500"
-              }`}
-              placeholder="Enter installment number"
-              min="1"
-            />
-            {errors.installment_no && (
-              <p className="text-red-500 text-sm mt-1">
-                {errors.installment_no}
-              </p>
-            )}
-          </div>
-
-          {/* Days or Date */}
-          <div>
-            <label className="block text-gray-700 font-medium mb-1">
-              Due after (Days OR Date) <span className="text-red-500">*</span>
-            </label>
-            <div className="flex items-center gap-4">
-              <div className="flex-1">
-                <div className="flex items-center">
-                  <div className="flex items-center w-full">
-                    <input
-                      type="number"
-                      name="days"
-                      value={formData.days}
-                      onChange={handleChange}
-                      onBlur={handleBlur}
-                      className={`w-full p-2 border rounded-md focus:outline-none ${
-                        errors.days
-                          ? "border-red-500"
-                          : "focus:ring-2 focus:ring-green-500"
-                      } ${
-                        formData.date
-                          ? "bg-gray-200 opacity-50 cursor-not-allowed"
-                          : ""
-                      }`}
-                      placeholder="Enter days"
-                      min="1"
-                      disabled={!!formData.date}
-                    />
-                    <span className="ml-2">days</span>
-                  </div>
-                </div>
-                {errors.days && (
-                  <p className="text-red-500 text-sm mt-1">{errors.days}</p>
-                )}
-              </div>
-
-              <div className="text-gray-500 font-bold">OR</div>
-
-              <div className="flex-1">
-                <div className="flex items-center">
-                  <input
-                    type="date"
-                    name="date"
-                    value={formData.date}
-                    onChange={handleChange}
-                    min={today}
-                    className={`w-full p-2 border rounded-md focus:outline-none ${
-                      errors.date
-                        ? "border-red-500"
-                        : "focus:ring-2 focus:ring-green-500"
-                    } ${
-                      formData.days
-                        ? "bg-gray-200 opacity-50 cursor-not-allowed"
-                        : ""
-                    }`}
-                    disabled={!!formData.days}
-                  />
-                </div>
-                {errors.date && (
-                  <p className="text-red-500 text-sm mt-1">{errors.date}</p>
-                )}
-              </div>
+            {/* Number of Installments */}
+            <div className="w-1/2">
+              <label
+                htmlFor="numInstallments"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Number of Installments <span className="text-red-600">*</span>
+              </label>
+              {errors.numInstallments && touched.numInstallments && (
+                <p className="text-red-500 text-sm">{errors.numInstallments}</p>
+              )}
+              <input
+                type="number"
+                id="numInstallments"
+                name="numInstallments"
+                value={numInstallments}
+                onChange={handleFormChange}
+                onBlur={handleFormBlur}
+                min="1"
+                className={`w-full p-2 mt-1 border rounded-md focus:outline-none focus:ring-2 ${
+                  errors.numInstallments && touched.numInstallments
+                    ? "border-red-500 focus:ring-red-500"
+                    : "border-black focus:ring-green-500"
+                }`}
+                required
+              />
             </div>
           </div>
-
-          {/* Percentage or Amount */}
-          <div>
-            <label className="block text-gray-700 font-medium mb-1">
-              Percentage OR Lump-sum Amount{" "}
-              <span className="text-red-500">*</span>
-            </label>
-            <div className="flex items-center gap-4">
-              <div className="flex-1">
-                <div className="flex items-center">
-                  <div className="flex items-center w-full">
-                    <input
-                      type="number"
-                      name="percentage"
-                      value={formData.percentage}
-                      onChange={handleChange}
-                      onBlur={handleBlur}
-                      className={`w-full p-2 border rounded-md focus:outline-none ${
-                        errors.percentage
-                          ? "border-red-500"
-                          : "focus:ring-2 focus:ring-green-500"
-                      } ${
-                        formData.amount
-                          ? "bg-gray-200 opacity-50 cursor-not-allowed"
-                          : ""
-                      }`}
-                      placeholder="Enter percentage"
-                      min="0"
-                      max="100"
-                      step="0.01"
-                      disabled={!!formData.amount}
-                    />
-                    <span className="ml-2">%</span>
-                  </div>
-                </div>
-                {errors.percentage && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {errors.percentage}
-                  </p>
-                )}
-              </div>
-
-              <div className="text-gray-500 font-bold">OR</div>
-
-              <div className="flex-1">
-                <div className="flex items-center">
-                  <div className="flex items-center w-full">
-                    <span className="mr-2">₹</span>
-                    <input
-                      type="number"
-                      name="amount"
-                      value={formData.amount}
-                      onChange={handleChange}
-                      onBlur={handleBlur}
-                      className={`w-full p-2 border rounded-md focus:outline-none ${
-                        errors.amount
-                          ? "border-red-500"
-                          : "focus:ring-2 focus:ring-green-500"
-                      } ${
-                        formData.percentage
-                          ? "bg-gray-200 opacity-50 cursor-not-allowed"
-                          : ""
-                      }`}
-                      placeholder="Enter amount"
-                      min="0"
-                      step="0.01"
-                      disabled={!!formData.percentage}
-                    />
-                  </div>
-                </div>
-                {errors.amount && (
-                  <p className="text-red-500 text-sm mt-1">{errors.amount}</p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Remarks */}
-          <div>
-            <label className="block text-gray-700 font-medium mb-1">
-              Remarks
-            </label>
-            <input
-              type="text"
-              name="remarks"
-              value={formData.remarks}
-              onChange={handleChange}
-              className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-              placeholder="Enter remarks (optional)"
-            />
-          </div>
-
-          {/* Submit button */}
-          <div className="flex justify-center pt-2">
+          <div className="mb-6"></div>
+          <div className="flex justify-center">
             <button
               type="submit"
-              className={`w-1/3 p-3 bg-green-600 text-white rounded-md hover:bg-green-700 transition ${
-                isSubmitting ? "opacity-50 cursor-not-allowed" : ""
-              }`}
-              disabled={isSubmitting}
+              className="w-[200px] bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
-              {isSubmitting ? "Adding..." : "Add"}
+              Generate Table
             </button>
           </div>
-        </div>
-      </form>
+        </form>
 
-      {/* Success Popup */}
-      {showSuccessPopup && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
-            <div className="text-center">
-              <svg
-                className="mx-auto h-12 w-12 text-green-500"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
+        {/* Table */}
+        {tableData && (
+          <div>
+            <h3 className="text-xl font-semibold mb-4">{tableData.planName}</h3>
+            <div>
+              <table className="min-w-full divide-y divide-gray-300 table-auto">
+                <thead className="bg-gray-100">
+                  <tr>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider w-28">
+                      Installment Number
+                    </th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider w-32">
+                      Due After Days
+                    </th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider w-44">
+                      Due Date
+                    </th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider w-32">
+                      Percentage
+                    </th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider w-36">
+                      Lump-sum Amount
+                    </th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider w-56">
+                      Remarks
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {tableData.rows.map((row, index) => (
+                    <tr key={index}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                        {row.installment}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500 text-center">
+                        {errors["dueAfterDays-" + index] &&
+                          touched["dueAfterDays-" + index] && (
+                            <p className="text-red-500 text-sm">
+                              {errors["dueAfterDays-" + index]}
+                            </p>
+                          )}
+                        <input
+                          type="number"
+                          value={row.dueAfterDays}
+                          onChange={(e) =>
+                            handleInputChange(
+                              index,
+                              "dueAfterDays",
+                              e.target.value
+                            )
+                          }
+                          onBlur={() => handleTableBlur(index, "dueAfterDays")}
+                          className={`w-20 p-2 border rounded-md focus:outline-none focus:ring-2 mx-auto block ${
+                            errors["dueAfterDays-" + index] &&
+                            touched["dueAfterDays-" + index]
+                              ? "border-red-500 focus:ring-red-500"
+                              : "border-black focus:ring-green-500"
+                          } ${
+                            row.dueFieldActive &&
+                            row.dueFieldActive !== "dueAfterDays"
+                              ? "bg-gray-200 cursor-not-allowed"
+                              : ""
+                          }`}
+                          placeholder="Days"
+                          disabled={
+                            row.dueFieldActive &&
+                            row.dueFieldActive !== "dueAfterDays"
+                          }
+                        />
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500 text-center">
+                        <input
+                          type="date"
+                          value={row.dueDate}
+                          onChange={(e) =>
+                            handleInputChange(index, "dueDate", e.target.value)
+                          }
+                          className={`w-36 p-2 border rounded-md focus:outline-none focus:ring-2 mx-auto block border-black focus:ring-green-500 ${
+                            row.dueFieldActive &&
+                            row.dueFieldActive !== "dueDate"
+                              ? "bg-gray-200 cursor-not-allowed"
+                              : ""
+                          }`}
+                          disabled={
+                            row.dueFieldActive &&
+                            row.dueFieldActive !== "dueDate"
+                          }
+                        />
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500 text-center">
+                        {errors["percentage-" + index] &&
+                          touched["percentage-" + index] && (
+                            <p className="text-red-500 text-sm">
+                              {errors["percentage-" + index]}
+                            </p>
+                          )}
+                        <input
+                          type="number"
+                          value={row.percentage}
+                          onChange={(e) =>
+                            handleInputChange(
+                              index,
+                              "percentage",
+                              e.target.value
+                            )
+                          }
+                          onBlur={() => handleTableBlur(index, "percentage")}
+                          className={`w-20 p-2 border rounded-md focus:outline-none focus:ring-2 mx-auto block ${
+                            errors["percentage-" + index] &&
+                            touched["percentage-" + index]
+                              ? "border-red-500 focus:ring-red-500"
+                              : "border-black focus:ring-green-500"
+                          } ${
+                            row.amountFieldActive &&
+                            row.amountFieldActive !== "percentage"
+                              ? "bg-gray-200 cursor-not-allowed"
+                              : ""
+                          }`}
+                          placeholder="%"
+                          disabled={
+                            row.amountFieldActive &&
+                            row.amountFieldActive !== "percentage"
+                          }
+                        />
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500 text-center">
+                        {errors["lumpSum-" + index] &&
+                          touched["lumpSum-" + index] && (
+                            <p className="text-red-500 text-sm">
+                              {errors["lumpSum-" + index]}
+                            </p>
+                          )}
+                        <input
+                          type="number"
+                          value={row.lumpSum}
+                          onChange={(e) =>
+                            handleInputChange(index, "lumpSum", e.target.value)
+                          }
+                          onBlur={() => handleTableBlur(index, "lumpSum")}
+                          className={`w-28 p-2 border rounded-md focus:outline-none focus:ring-2 mx-auto block ${
+                            errors["lumpSum-" + index] &&
+                            touched["lumpSum-" + index]
+                              ? "border-red-500 focus:ring-red-500"
+                              : "border-black focus:ring-green-500"
+                          } ${
+                            row.amountFieldActive &&
+                            row.amountFieldActive !== "lumpSum"
+                              ? "bg-gray-200 cursor-not-allowed"
+                              : ""
+                          }`}
+                          placeholder="Amount"
+                          disabled={
+                            row.amountFieldActive &&
+                            row.amountFieldActive !== "lumpSum"
+                          }
+                        />
+                      </td>
+                      <td className="px-1 py-4 text-sm text-gray-500">
+                        <input
+                          type="text"
+                          value={row.remarks}
+                          onChange={(e) =>
+                            handleInputChange(index, "remarks", e.target.value)
+                          }
+                          className="w-[200px] p-2 border rounded-md focus:outline-none focus:ring-2 border-black focus:ring-green-500"
+                          style={{
+                            whiteSpace: "normal",
+                            wordWrap: "break-word",
+                          }}
+                          placeholder="Remarks"
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="mt-6 flex justify-center">
+              <button
+                onClick={handleTableSubmit}
+                className="w-[200] bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
-              <h3 className="mt-2 text-lg font-medium text-gray-900">
-                Plan Added Successfully!
-              </h3>
-              <div className="mt-4">
-                <button
-                  type="button"
-                  className="inline-flex justify-center px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  onClick={closeSuccessPopup}
-                >
-                  OK
-                </button>
-              </div>
+                Submit
+              </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
-};
+}
 
 export default AddNewPlan;
