@@ -9,7 +9,6 @@ import masterRoutes from "./routes/masterRoutes.js";
 import utilitiesRoutes from "./routes/utlilitesRoutes.js";
 import logRoutes from "./routes/logRoutes.js";
 import prisma from "./db/index.js";
-
 dotenv.config();
 
 const app = express();
