@@ -11,7 +11,7 @@ import { addProject, updateProject, getProjects, getProjectById, deleteProject }
 
 import { addCoApplicant } from "../controllers/masterController/co-applicant.js";
 
-import { addNewInstallmentPlan, getInstallments, getInstallmentById, updateInstallment, deleteInstallment } from "../controllers/masterController/plans.js";
+import { addNewInstallmentPlan, addInstallmentDetails, getInstallmentPlans, getInstallmentPlanByName, updateInstallmentPlan, deleteInstallmentPlan } from "../controllers/masterController/plans.js";
 
 import { addNewPLC, getPLC, getPLCById, updatePLC, deletePLC } from "../controllers/masterController/plc.js";
 
@@ -61,10 +61,11 @@ router.post("/co-applicant", addCoApplicant);
 
 // installment plan
 router.post("/add-new-installment-plan", addNewInstallmentPlan);
-router.get("/installment-plans", getInstallments);
-router.get("/installment-plan/:id", getInstallmentById);
-router.put("/installment-plan/:id", updateInstallment);
-router.delete("/installment-plan/:id", deleteInstallment);
+router.post("/add-installment-details", addInstallmentDetails);
+router.get("/get-installment-plan", getInstallmentPlans);
+router.get("/get-installment-plan/:id", getInstallmentPlanByName);
+router.put("/update-installment-plan/:id", updateInstallmentPlan);
+router.delete("/delete-installment-plan/:id", deleteInstallmentPlan)
 
 // plc
 router.post("/add-new-plc", addNewPLC);

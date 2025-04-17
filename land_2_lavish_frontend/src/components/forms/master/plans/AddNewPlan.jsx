@@ -1,129 +1,80 @@
-import  { useState } from "react";
-// import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 
-const AddNewPlan = () => {
-  const [formData, setFormData] = useState({
-    installment_no: "",
-    days: "",
-    date: "",
-    percentage: "",
-    amount: "",
-    remarks: "",
-  });
-  const [errors, setErrors] = useState({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
-  // const navigate = useNavigate();
+function AddNewPlan() {
+  const [planName, setPlanName] = useState("");
+  const [numInstallments, setNumInstallments] = useState("");
+  const [tableData, setTableData] = useState(null);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
-
-    // Clear error when user types
-    setErrors((prev) => ({ ...prev, [name]: "" }));
-
-    // Clear both days/date errors when either is changed
-    if (name === "days" || name === "date") {
-      setErrors((prev) => ({ ...prev, days: "", date: "" }));
-    }
-
-    // Clear both percentage/amount errors when either is changed
-    if (name === "percentage" || name === "amount") {
-      setErrors((prev) => ({ ...prev, percentage: "", amount: "" }));
-    }
-  };
-
-  const handleBlur = (e) => {
-    const { name, value } = e.target;
-
-    // Validate percentage range
-    if (name === "percentage" && value) {
-      const percentageValue = parseFloat(value);
-      if (percentageValue < 0 || percentageValue > 100) {
-        setErrors((prev) => ({
-          ...prev,
-          percentage: "Percentage must be between 0 and 100",
-        }));
-      }
-    }
-
-    // Validate amount non-negative
-    if (name === "amount" && value) {
-      const amountValue = parseFloat(value);
-      if (amountValue < 0) {
-        setErrors((prev) => ({
-          ...prev,
-          amount: "Amount cannot be negative",
-        }));
-      }
-    }
-
-    // Validate days positive
-    if (name === "days" && value) {
-      const daysValue = parseInt(value);
-      if (daysValue <= 0) {
-        setErrors((prev) => ({
-          ...prev,
-          days: "Days must be greater than 0",
-        }));
-      }
-    }
-  };
-
-  const validateForm = () => {
-    let newErrors = {};
-
-    if (!formData.installment_no)
-      newErrors.installment_no = "Installment No is required";
-
-    // Days/date validation
-    if (!formData.days && !formData.date) {
-      newErrors.days = "Either days or date is required";
-      newErrors.date = "Either days or date is required";
-    }
-
-    // Percentage/amount validation
-    if (!formData.percentage && !formData.amount) {
-      newErrors.percentage = "Either percentage or amount is required";
-      newErrors.amount = "Either percentage or amount is required";
-    }
-
-    // Individual field validations
-    if (formData.percentage) {
-      const percentageValue = parseFloat(formData.percentage);
-      if (percentageValue < 0 || percentageValue > 100) {
-        newErrors.percentage = "Percentage must be between 0 and 100";
-      }
-    }
-    if (formData.amount) {
-      const amountValue = parseFloat(formData.amount);
-      if (amountValue < 0) {
-        newErrors.amount = "Amount cannot be negative";
-      }
-    }
-    if (formData.days) {
-      const daysValue = parseInt(formData.days);
-      if (daysValue <= 0) {
-        newErrors.days = "Days must be greater than 0";
-      }
-    }
-
-    return newErrors;
-  };
-
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    const newErrors = validateForm();
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
+    const installments = parseInt(numInstallments);
+    if (isNaN(installments) || installments < 1) {
+      alert("Please enter a valid number of installments.");
       return;
     }
 
-    setIsSubmitting(true);
+    const rows = Array.from({ length: installments }, (_, index) => ({
+      installment_number: index + 1,
+      amount: "",
+      percentage: "",
+      due_after_days: "",
+      due_date: "",
+      dueFieldActive: null,
+      amountFieldActive: null,
+    }));
+
+    setTableData({ plan_name: planName, rows });
+  };
+
+  const handleInputChange = (index, field, value) => {
+    const updatedRows = [...tableData.rows];
+    const row = { ...updatedRows[index] };
+
+    // Update the field value
+    row[field] = value;
+
+    // Determine which field pair is being updated
+    if (field === "due_after_days" || field === "due_date") {
+      if (value === "") {
+        row.dueFieldActive = null;
+      } else if (!row.dueFieldActive) {
+        row.dueFieldActive = field;
+      }
+    } else if (field === "percentage" || field === "amount") {
+      if (value === "") {
+        row.amountFieldActive = null;
+      } else if (!row.amountFieldActive) {
+        row.amountFieldActive = field;
+      }
+    }
+
+    updatedRows[index] = row;
+    setTableData({ ...tableData, rows: updatedRows });
+  };
+
+  const handleTableSubmit = async () => {
+    if (!tableData) {
+      alert("No table data to submit.");
+      return;
+    }
+
+    // Basic validation: Ensure all rows have required fields
+    const isValid = tableData.rows.every((row) => {
+      const hasDueField = row.due_after_days || row.due_date;
+      const hasAmountField = row.percentage || row.amount;
+      return hasDueField && hasAmountField;
+    });
+
+    if (!isValid) {
+      alert(
+        "Please fill in either Due After Days or Due Date and either Percentage or Amount for each row."
+      );
+      return;
+    }
 
     try {
-      const response = await fetch(
+      // Step 1: Create the installment plan
+      const planResponse = await fetch(
         "http://localhost:5000/api/master/add-new-installment-plan",
         {
           method: "POST",
@@ -131,308 +82,263 @@ const AddNewPlan = () => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            installment_no: formData.installment_no,
-            due_days: formData.days || null,
-            due_date: formData.date || null,
-            percentage: formData.percentage || null,
-            lumpsum_amount: formData.amount || null,
-            remarks: formData.remarks || null,
+            plan_name: tableData.plan_name,
+            no_of_installments: tableData.rows.length,
           }),
         }
       );
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        if (data.message) {
-          setErrors((prev) => ({ ...prev, installment_no: data.message }));
-        } else {
-          throw new Error("Something went wrong");
-        }
-        return;
+      const planData = await planResponse.json();
+      
+      if (!planResponse.ok) {
+        throw new Error(planData.message || "Failed to create installment plan");
       }
 
-      setShowSuccessPopup(true);
+      // Step 2: Add installment details
+      const detailsResponse = await fetch(
+        "http://localhost:5000/api/master/add-installment-details",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            plan_name: tableData.plan_name,
+            installment_number: tableData.rows.map(row => row.installment_number),
+            amount: tableData.rows.map(row => {
+              const value = row.amount;
+              if (!value || value === "" || isNaN(value)) return 0;
+              return parseFloat(value);
+            }),
+            percentage: tableData.rows.map(row => {
+              const value = row.percentage;
+              if (!value || value === "" || isNaN(value)) return 0;
+              return parseFloat(value);
+            }),
+            due_after_days: tableData.rows.map(row => {
+              const value = row.due_after_days;
+              if (!value || value === "" || isNaN(value)) return 0;
+              return parseInt(value);
+            }),
+            due_date: tableData.rows.map(row => {
+              const value = row.due_date;
+              if (!value || value === "") {
+                // If no date is provided, calculate it based on due_after_days
+                const days = row.due_after_days;
+                if (days && !isNaN(days)) {
+                  const date = new Date();
+                  date.setDate(date.getDate() + parseInt(days));
+                  return date.toISOString();
+                }
+                // If no due_after_days either, use today's date
+                return new Date().toISOString();
+              }
+              const date = new Date(value);
+              return date instanceof Date && !isNaN(date) ? date.toISOString() : new Date().toISOString();
+            }),
+          }),
+        }
+      );
 
-      // Reset form
-      setFormData({
-        installment_no: "",
-        days: "",
-        date: "",
-        percentage: "",
-        amount: "",
-        remarks: "",
-      });
+      if (!detailsResponse.ok) {
+        const detailsData = await detailsResponse.json();
+        throw new Error(detailsData.message || "Failed to add installment details");
+      }
+
+      alert("Installment plan and details submitted successfully!");
+      setPlanName("");
+      setNumInstallments("");
+      setTableData(null);
     } catch (error) {
-      console.error("Error:", error);
-      setErrors((prev) => ({ ...prev, form: error.message }));
-    } finally {
-      setIsSubmitting(false);
+      console.error("Error submitting data:", error);
+      alert(error.message || "Failed to submit data. Please try again.");
     }
   };
 
-  const closeSuccessPopup = () => {
-    setShowSuccessPopup(false);
-    // navigate("/");
-  };
-
-
-  const today = new Date().toISOString().split("T")[0];
-
   return (
-    <div className="flex justify-center items-center min-h-screen bg-[#272727] p-30">
-      <form
-        onSubmit={handleSubmit}
-        className="relative w-full max-w-[700px] bg-white p-8 rounded-2xl shadow-lg"
-      >
-        <h2 className="text-2xl font-bold text-center text-black mb-2">
-          Add New Plan
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+      <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-4xl">
+        <h2 className="text-2xl font-bold mb-6 text-center">
+          Add New Installment Plan
         </h2>
 
-        <p className="text-center text-sm text-red-500 mb-6">
-          Fields marked by <span className="text-red-500">*</span> are mandatory
-        </p>
-
-        {errors.form && (
-          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md text-center">
-            {errors.form}
-          </div>
-        )}
-
-        <div className="space-y-6">
-          {/* Installment No */}
-          <div>
-            <label className="block text-gray-700 font-medium mb-1">
-              Installment No <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="number"
-              name="installment_no"
-              value={formData.installment_no}
-              onChange={handleChange}
-              className={`w-full p-2 border rounded-md focus:outline-none ${
-                errors.installment_no
-                  ? "border-red-500"
-                  : "focus:ring-2 focus:ring-green-500"
-              }`}
-              placeholder="Enter installment number"
-              min="1"
-            />
-            {errors.installment_no && (
-              <p className="text-red-500 text-sm mt-1">
-                {errors.installment_no}
-              </p>
-            )}
-          </div>
-
-          {/* Days or Date */}
-          <div>
-            <label className="block text-gray-700 font-medium mb-1">
-              Due after (Days OR Date) <span className="text-red-500">*</span>
-            </label>
-            <div className="flex items-center gap-4">
-              <div className="flex-1">
-                <div className="flex items-center">
-                  <div className="flex items-center w-full">
-                    <input
-                      type="number"
-                      name="days"
-                      value={formData.days}
-                      onChange={handleChange}
-                      onBlur={handleBlur}
-                      className={`w-full p-2 border rounded-md focus:outline-none ${
-                        errors.days
-                          ? "border-red-500"
-                          : "focus:ring-2 focus:ring-green-500"
-                      } ${
-                        formData.date
-                          ? "bg-gray-200 opacity-50 cursor-not-allowed"
-                          : ""
-                      }`}
-                      placeholder="Enter days"
-                      min="1"
-                      disabled={!!formData.date}
-                    />
-                    <span className="ml-2">days</span>
-                  </div>
-                </div>
-                {errors.days && (
-                  <p className="text-red-500 text-sm mt-1">{errors.days}</p>
-                )}
-              </div>
-
-              <div className="text-gray-500 font-bold">OR</div>
-
-              <div className="flex-1">
-                <div className="flex items-center">
-                  <input
-                    type="date"
-                    name="date"
-                    value={formData.date}
-                    onChange={handleChange}
-                    min={today}
-                    className={`w-full p-2 border rounded-md focus:outline-none ${
-                      errors.date
-                        ? "border-red-500"
-                        : "focus:ring-2 focus:ring-green-500"
-                    } ${
-                      formData.days
-                        ? "bg-gray-200 opacity-50 cursor-not-allowed"
-                        : ""
-                    }`}
-                    disabled={!!formData.days}
-                  />
-                </div>
-                {errors.date && (
-                  <p className="text-red-500 text-sm mt-1">{errors.date}</p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Percentage or Amount */}
-          <div>
-            <label className="block text-gray-700 font-medium mb-1">
-              Percentage OR Lump-sum Amount{" "}
-              <span className="text-red-500">*</span>
-            </label>
-            <div className="flex items-center gap-4">
-              <div className="flex-1">
-                <div className="flex items-center">
-                  <div className="flex items-center w-full">
-                    <input
-                      type="number"
-                      name="percentage"
-                      value={formData.percentage}
-                      onChange={handleChange}
-                      onBlur={handleBlur}
-                      className={`w-full p-2 border rounded-md focus:outline-none ${
-                        errors.percentage
-                          ? "border-red-500"
-                          : "focus:ring-2 focus:ring-green-500"
-                      } ${
-                        formData.amount
-                          ? "bg-gray-200 opacity-50 cursor-not-allowed"
-                          : ""
-                      }`}
-                      placeholder="Enter percentage"
-                      min="0"
-                      max="100"
-                      step="0.01"
-                      disabled={!!formData.amount}
-                    />
-                    <span className="ml-2">%</span>
-                  </div>
-                </div>
-                {errors.percentage && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {errors.percentage}
-                  </p>
-                )}
-              </div>
-
-              <div className="text-gray-500 font-bold">OR</div>
-
-              <div className="flex-1">
-                <div className="flex items-center">
-                  <div className="flex items-center w-full">
-                    <span className="mr-2">₹</span>
-                    <input
-                      type="number"
-                      name="amount"
-                      value={formData.amount}
-                      onChange={handleChange}
-                      onBlur={handleBlur}
-                      className={`w-full p-2 border rounded-md focus:outline-none ${
-                        errors.amount
-                          ? "border-red-500"
-                          : "focus:ring-2 focus:ring-green-500"
-                      } ${
-                        formData.percentage
-                          ? "bg-gray-200 opacity-50 cursor-not-allowed"
-                          : ""
-                      }`}
-                      placeholder="Enter amount"
-                      min="0"
-                      step="0.01"
-                      disabled={!!formData.percentage}
-                    />
-                  </div>
-                </div>
-                {errors.amount && (
-                  <p className="text-red-500 text-sm mt-1">{errors.amount}</p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Remarks */}
-          <div>
-            <label className="block text-gray-700 font-medium mb-1">
-              Remarks
+        <form onSubmit={handleSubmit} className="mb-6">
+          <div className="mb-4">
+            <label
+              htmlFor="planName"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Installment Plan Name
             </label>
             <input
               type="text"
-              name="remarks"
-              value={formData.remarks}
-              onChange={handleChange}
-              className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-              placeholder="Enter remarks (optional)"
+              id="planName"
+              value={planName}
+              onChange={(e) => setPlanName(e.target.value)}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+              required
             />
           </div>
-
-          {/* Submit button */}
-          <div className="flex justify-center pt-2">
-            <button
-              type="submit"
-              className={`w-1/3 p-3 bg-green-600 text-white rounded-md hover:bg-green-700 transition ${
-                isSubmitting ? "opacity-50 cursor-not-allowed" : ""
-              }`}
-              disabled={isSubmitting}
+          <div className="mb-4">
+            <label
+              htmlFor="numInstallments"
+              className="block text-sm font-medium text-gray-700"
             >
-              {isSubmitting ? "Adding..." : "Add"}
-            </button>
+              Number of Installments
+            </label>
+            <input
+              type="number"
+              id="numInstallments"
+              value={numInstallments}
+              onChange={(e) => setNumInstallments(e.target.value)}
+              min="1"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+              required
+            />
           </div>
-        </div>
-      </form>
+          <button
+            type="submit"
+            className="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            Generate Table
+          </button>
+        </form>
 
-      {/* Success Popup */}
-      {showSuccessPopup && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
-            <div className="text-center">
-              <svg
-                className="mx-auto h-12 w-12 text-green-500"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
+        {tableData && (
+          <div>
+            <h3 className="text-xl font-semibold mb-4">{tableData.plan_name}</h3>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Installment
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Due After Days
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Due Date
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Percentage
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Amount
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {tableData.rows.map((row, index) => (
+                    <tr key={index}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {row.installment_number}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <input
+                          type="number"
+                          value={row.due_after_days}
+                          onChange={(e) =>
+                            handleInputChange(
+                              index,
+                              "due_after_days",
+                              e.target.value
+                            )
+                          }
+                          className={`w-20 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm ${
+                            row.dueFieldActive &&
+                            row.dueFieldActive !== "due_after_days"
+                              ? "bg-gray-200 cursor-not-allowed"
+                              : ""
+                          }`}
+                          placeholder="Days"
+                          disabled={
+                            row.dueFieldActive &&
+                            row.dueFieldActive !== "due_after_days"
+                          }
+                        />
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <input
+                          type="date"
+                          value={row.due_date}
+                          onChange={(e) =>
+                            handleInputChange(index, "due_date", e.target.value)
+                          }
+                          className={`w-36 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm ${
+                            row.dueFieldActive &&
+                            row.dueFieldActive !== "due_date"
+                              ? "bg-gray-200 cursor-not-allowed"
+                              : ""
+                          }`}
+                          disabled={
+                            row.dueFieldActive &&
+                            row.dueFieldActive !== "due_date"
+                          }
+                        />
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <input
+                          type="number"
+                          value={row.percentage}
+                          onChange={(e) =>
+                            handleInputChange(
+                              index,
+                              "percentage",
+                              e.target.value
+                            )
+                          }
+                          className={`w-20 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm ${
+                            row.amountFieldActive &&
+                            row.amountFieldActive !== "percentage"
+                              ? "bg-gray-200 cursor-not-allowed"
+                              : ""
+                          }`}
+                          placeholder="%"
+                          disabled={
+                            row.amountFieldActive &&
+                            row.amountFieldActive !== "percentage"
+                          }
+                        />
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <input
+                          type="number"
+                          value={row.amount}
+                          onChange={(e) =>
+                            handleInputChange(index, "amount", e.target.value)
+                          }
+                          className={`w-28 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm ${
+                            row.amountFieldActive &&
+                            row.amountFieldActive !== "amount"
+                              ? "bg-gray-200 cursor-not-allowed"
+                              : ""
+                          }`}
+                          placeholder="Amount"
+                          disabled={
+                            row.amountFieldActive &&
+                            row.amountFieldActive !== "amount"
+                          }
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="mt-6">
+              <button
+                onClick={handleTableSubmit}
+                className="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
-              <h3 className="mt-2 text-lg font-medium text-gray-900">
-                Plan Added Successfully!
-              </h3>
-              <div className="mt-4">
-                <button
-                  type="button"
-                  className="inline-flex justify-center px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  onClick={closeSuccessPopup}
-                >
-                  OK
-                </button>
-              </div>
+                Submit Table Data
+              </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
-};
+}
 
 export default AddNewPlan;

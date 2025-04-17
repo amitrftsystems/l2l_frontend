@@ -60,8 +60,6 @@ model Booking {
 
 model Broker {
   broker_id       Int      @id @default(autoincrement())
-  project_id      Int
-  code            Int
   name            String
   address         String
   mobile          String?
@@ -72,7 +70,8 @@ model Broker {
   dist_no         String?
   pan_no          String?
   net_commission_rate Float  @default(0.0)
-  project         Project  @relation(fields: [project_id], references: [project_id])
+  primary_projects Project[] @relation("PrimaryBroker")
+  associated_projects Project[] @relation("ProjectBrokers")
   customers       Customer[]
 }
 
@@ -98,7 +97,7 @@ model CoApplicant {
 
 model Customer {
   customer_id          String        @id
-  project_id          Int
+  project_id          String
   broker_id           Int?
   property_type       String?
   booking_receipt_no  String?
@@ -139,14 +138,21 @@ model Customer {
 }
 
 model InstallmentPlan {
-  installment_no  String    @id
-  due_days        Int?
-  due_date        DateTime? 
-  percentage      Float?
-  lumpsum_amount  Float?
-  remarks         String?
-  created_at      DateTime  @default(now())
-  projects        Project[]
+  plan_name           String    @id @unique
+  no_of_installments Int
+  projects           Project[]
+  installment_details InstallmentDetails[]
+}
+
+model InstallmentDetails {
+  detail_id           Int      @id @default(autoincrement())
+  installment_plan    InstallmentPlan @relation(fields: [plan_name], references: [plan_name])
+  plan_name          String
+  installment_number Int
+  amount            Decimal
+  percentage        Decimal
+  due_after_days    Int
+  due_date          DateTime
 }
 
 model LeanBank {
@@ -168,21 +174,18 @@ model Plc {
 }
 
 model Project {
-  project_id      Int             @id @default(autoincrement())
-  project_name    String          
-  company_name    String
-  address         String
-  landmark        String?
-  plan            String
-  size            Int?
-  measuring_unit  String?
-  sign_image_name String
-  created_at      DateTime        @default(now())
-  installment_plan InstallmentPlan @relation(fields: [plan], references: [installment_no])
-  brokers         Broker[]
-  stocks          Stock[]
+  project_id    String   @id @unique
+  company_name  String
+  address       String
+  landmark      String?
+  broker_id     Int?
+  plan          String
+  primary_broker Broker?  @relation("PrimaryBroker", fields: [broker_id], references: [broker_id])
+  installment_plan InstallmentPlan @relation(fields: [plan], references: [plan_name])
+  customers     Customer[]
   registration_forms RegistrationForm[]
-  customers       Customer[]
+  stocks        Stock[]
+  associated_brokers Broker[] @relation("ProjectBrokers")
 }
 
 model Property {
@@ -198,10 +201,16 @@ model Property {
   stocks          Stock[]
 }
 
+model PropertySize {
+  size_id         Int      @id @unique
+  size_number     Int
+  measuring_unit  String
+}
+
 model RegistrationForm {
   id              Int      @id @default(autoincrement())
   customer_id     String
-  project_id      Int
+  project_id      String
   unit_id         String
   manual_application_number String? @unique
   booking_receipt_number String?
@@ -233,7 +242,7 @@ model RegistrationForm {
 
 model Stock {
   stock_id        Int      @id @default(autoincrement())
-  project_id      Int
+  project_id      String
   property_id     Int
   property_type   String?
   size            Int?
