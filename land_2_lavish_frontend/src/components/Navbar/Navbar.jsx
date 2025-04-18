@@ -184,6 +184,7 @@ export default function Navbar() {
                   },
                   { name: "Co-Applicant", link: "/masters/add-co-applicant" },
                   { name: "Lean Bank", link: "/masters/add-bank" },
+                  { name: "Add Propertes", link: "/masters/add-properties" },
                 ].map((item, index) => (
                   <li
                     key={index}

@@ -26,18 +26,19 @@ import CustomerRegistration from "./components/forms/master/customer/CustomerReg
 import CustomerEdit from "./components/forms/master/customer/CustomerEdit.jsx";
 import AddCoApplicant from "./components/forms/master/co-applicant/CoApplicant.jsx";
 import LeanBank from "./components/forms/master/leanbank/LeanBank.jsx";
+import AddPropertyList from "./components/forms/master/projects/AddPropertyList.jsx"
 
 import Login from "./login/Login.jsx";
 import SuperAdminDashboard from "./superAdminDashboard/SuperadminDashboard.jsx";
 import SuperAdminNavbar from "./superAdminDashboard/SuperAdminNavbar.jsx";
 
-{/* Utilities imports */}
+{/* Utilities imports */ }
 import Employees from "./components/utilites/Employee.jsx";
 import AllotmentLetter from "./components/utilites/AllotmentLetter.jsx";
 import LogReports from "./components/utilites/LogReports.jsx";
 import UpcomingBirthdays from "./components/utilites/Birthdays.jsx";
 
-{/*transaction imports */}
+{/*transaction imports */ }
 import BBAForm from "./components/forms/transactions/BbaForm.jsx";
 import DespatchForm from "./components/forms/transactions/DespatchForm.jsx";
 
@@ -80,7 +81,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/unauthorized" element={<div>Unauthorized Access!</div>} />
-          
+
           {/* Superadmin Routes */}
           <Route path="/superadmin" element={
             <ProtectedRoute allowedRoles={['SUPERADMIN']}>
@@ -93,14 +94,14 @@ function App() {
               <SuperAdminDashboard />
             </ProtectedRoute>
           } />
-          
+
           {/* Admin Routes */}
           <Route path="/admin" element={
             <ProtectedRoute allowedRoles={['ADMIN']}>
               <HomePage />
             </ProtectedRoute>
           } />
-          
+
           {/* Employee Routes */}
           <Route path="/employee" element={
             <ProtectedRoute allowedRoles={['EMPLOYEE']}>
@@ -172,6 +173,13 @@ function App() {
             </ProtectedRoute>
           } />
 
+          <Route path="/masters/add-properties" element={
+            <ProtectedRoute allowedRoles={['ADMIN', 'EMPLOYEE']}>
+              <AddPropertyList />
+            </ProtectedRoute>
+          } />
+
+
           {/* Transaction Routes */}
           <Route path="/transaction/booking" element={
             <ProtectedRoute allowedRoles={['ADMIN', 'EMPLOYEE']}>
@@ -198,17 +206,17 @@ function App() {
               <CallingFeedback />
             </ProtectedRoute>
           } />
-           <Route path="/transaction/BBA" element={
+          <Route path="/transaction/BBA" element={
             <ProtectedRoute allowedRoles={['ADMIN', 'EMPLOYEE']}>
-              <BBAForm/>
+              <BBAForm />
             </ProtectedRoute>
           } />
-           <Route path="/transaction/despatch" element={
+          <Route path="/transaction/despatch" element={
             <ProtectedRoute allowedRoles={['ADMIN', 'EMPLOYEE']}>
-              <DespatchForm/>
+              <DespatchForm />
             </ProtectedRoute>
           } />
-          
+
 
           {/* Utilities Routes */}
           <Route path="/utilities/manage-employees" element={
