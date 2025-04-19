@@ -2,14 +2,14 @@ import express from "express";
 const router = express.Router();
 
 
-import { 
-    createBooking,
-    getBookings,
-    getBookingById,
-    updateBooking,
-    deleteBooking,
-    checkCustomerBookings
- } from "../controllers/trasactionController/booking.js";
+// import { 
+//     createBooking,
+//     getBookings,
+//     getBookingById,
+//     updateBooking,
+//     deleteBooking,
+//     checkCustomerBookings
+//  } from "../controllers/trasactionController/booking.js";
 
 
 const {
