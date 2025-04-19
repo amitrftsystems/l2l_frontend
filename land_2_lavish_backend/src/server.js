@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 import authRoutes from "./routes/authRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import { connectDB } from "./db/index.js";
-import transactionRoutes from "./routes/transactionRoutes.js";
+// import transactionRoutes from "./routes/transactionRoutes.js";
 import masterRoutes from "./routes/masterRoutes.js";
 import utilitiesRoutes from "./routes/utlilitesRoutes.js";
 import logRoutes from "./routes/logRoutes.js";
@@ -22,7 +22,7 @@ app.use(express.json());
 
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
-app.use("/api/transactions", transactionRoutes);
+// app.use("/api/transactions", transactionRoutes);
 app.use("/api/master", masterRoutes);
 app.use("/api/utilities", utilitiesRoutes);
 app.use("/api/logs", logRoutes);
