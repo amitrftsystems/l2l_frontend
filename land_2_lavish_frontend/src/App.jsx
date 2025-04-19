@@ -16,12 +16,15 @@ import TransferCharges from "./components/forms/transactions/TransferCharges.jsx
 {
   /*Masters imports */
 }
-import AddNewPlan from "./components/forms/master/plans/AddNewPlan.jsx";
-import AddProject from "./components/forms/master/projects/AddProject.jsx";
+// import AddNewPlan from "./components/forms/master/plans/AddNewPlan.jsx";
+// import AddProject from "./components/forms/master/projects/AddProject.jsx";
+import PlansList from "./components/forms/master/plans/PlansList.jsx";
+import AddProject from "./components/forms/master/projects/ProjectsList.jsx";
 import AddNewPLC from "./components/forms/master/plc/AddNewPLC.jsx";
-import AddPropertySize from "./components/forms/master/projects/AddProjectSize.jsx";
+import ProjectsList from "./components/forms/master/projects/AddProjectSize.jsx";
 import Stock from "./components/forms/master/stock/Stock.jsx";
-import Broker from "./components/forms/master/broker/AddBroker.jsx";
+// import Broker from "./components/forms/master/broker/AddBroker.jsx";
+import BrokerList from "./components/forms/master/broker/BrokerList.jsx";
 import CustomerRegistration from "./components/forms/master/customer/CustomerRegistration.jsx";
 import CustomerEdit from "./components/forms/master/customer/CustomerEdit.jsx";
 import AddCoApplicant from "./components/forms/master/co-applicant/CoApplicant.jsx";
@@ -123,7 +126,7 @@ function App() {
           {/* Masters Routes */}
           <Route path="/masters/add-new-plan" element={
             <ProtectedRoute allowedRoles={['ADMIN', 'EMPLOYEE']}>
-              <AddNewPlan />
+              <PlansList />
             </ProtectedRoute>
           } />
           <Route path="/masters/add-project" element={
@@ -138,7 +141,7 @@ function App() {
           } />
           <Route path="/masters/add-unit-size" element={
             <ProtectedRoute allowedRoles={['ADMIN', 'EMPLOYEE']}>
-              <AddPropertySize />
+              <ProjectsList />
             </ProtectedRoute>
           } />
           <Route path="/masters/stock" element={
@@ -146,9 +149,14 @@ function App() {
               <Stock />
             </ProtectedRoute>
           } />
-          <Route path="/masters/add-broker" element={
+          {/* <Route path="/masters/add-broker" element={
             <ProtectedRoute allowedRoles={['ADMIN', 'EMPLOYEE']}>
               <Broker />
+            </ProtectedRoute>
+          } /> */}
+          <Route path="/masters/broker-list" element={
+            <ProtectedRoute allowedRoles={['ADMIN', 'EMPLOYEE']}>
+              <BrokerList />
             </ProtectedRoute>
           } />
           <Route path="/masters/add-customer" element={

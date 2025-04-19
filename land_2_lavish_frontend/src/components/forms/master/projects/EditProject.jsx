@@ -1,10 +1,11 @@
-import  { useState, useEffect } from "react";
-import PropTypes from 'prop-types';
-// import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
 import Select from "react-select";
-import {  CheckCircle } from "lucide-react";
+import { CheckCircle } from "lucide-react";
 
-const AddProject = () => {
+const EditProject = () => {
+  const { id } = useParams();
+
   const [formData, setFormData] = useState({
     project_name: "",
     company_name: "",
@@ -32,7 +33,7 @@ const AddProject = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [selectedFileName, setSelectedFileName] = useState("");
-  // const navigate = useNavigate();
+  const [currentSignImage, setCurrentSignImage] = useState("");
 
   useEffect(() => {
     const fetchInstallments = async () => {
@@ -71,6 +72,50 @@ const AddProject = () => {
 
     fetchInstallments();
   }, []);
+
+  useEffect(() => {
+    const fetchProject = async () => {
+      try {
+        const response = await fetch(
+          `http://localhost:5000/api/master/projects/${id}`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.success) {
+          setFormData({
+            project_name: data.data.project_name,
+            company_name: data.data.company_name,
+            address: data.data.address,
+            landmark: data.data.landmark || "",
+            plan: data.data.plan,
+            sign_image: null,
+          });
+          
+          if (data.data.sign_img) {
+            setCurrentSignImage(data.data.sign_img);
+          }
+        } else {
+          throw new Error(data.message || "Failed to fetch project");
+        }
+      } catch (error) {
+        console.error("Error fetching project:", error);
+        setErrors((prev) => ({ ...prev, project_name: error.message }));
+      }
+    };
+
+    fetchProject();
+  }, [id]);
 
   const handleChange = (e) => {
     const { name, value, type, files } = e.target;
@@ -160,9 +205,9 @@ const AddProject = () => {
 
     try {
       const response = await fetch(
-        "http://localhost:5000/api/master/add-project",
+        `http://localhost:5000/api/master/project/${id}`,
         {
-          method: "POST",
+          method: "PUT",
           body: formDataToSend,
         }
       );
@@ -177,13 +222,12 @@ const AddProject = () => {
           }));
           throw new Error(data.message || "Duplicate entry");
         }
-        throw new Error(data.message || "Failed to submit project");
+        throw new Error(data.message || "Failed to update project");
       }
 
       setShowSuccess(true);
       setTimeout(() => {
         setShowSuccess(false);
-        // navigate("/");
       }, 2000);
     } catch (error) {
       console.error("Submission error:", error);
@@ -244,50 +288,11 @@ const AddProject = () => {
     }),
   };
 
-  const CustomOption = ({ innerProps, label, isFocused }) => (
-    <div
-      {...innerProps}
-      className={`px-3 py-2 cursor-pointer ${
-        isFocused ? "bg-green-50" : "bg-white"
-      } hover:bg-green-50 transition-colors`}
-    >
-      {label}
-    </div>
-  );
-
-  CustomOption.propTypes = {
-    innerProps: PropTypes.object.isRequired,
-    label: PropTypes.string.isRequired,
-    isFocused: PropTypes.bool.isRequired
-  };
-
-  const CustomSingleValue = ({ innerProps, data }) => (
-    <div {...innerProps} className="ml-2">
-      {data.label}
-    </div>
-  );
-
-  CustomSingleValue.propTypes = {
-    innerProps: PropTypes.object.isRequired,
-    data: PropTypes.shape({
-      label: PropTypes.string.isRequired
-    }).isRequired
-  };
-
-  const ClearIndicator = ({ innerProps }) => (
-    <div {...innerProps} className="mr-2 cursor-pointer">
-    </div>
-  );
-
-  ClearIndicator.propTypes = {
-    innerProps: PropTypes.object.isRequired
-  };
-
   return (
     <div className="flex justify-center items-center min-h-screen bg-gray-800 p-30">
       <div className="bg-white p-6 rounded-xl shadow-lg w-full max-w-2xl relative border border-gray-200">
         <h2 className="text-2xl font-bold text-center text-black mb-2">
-          Project Master
+          Edit Project
         </h2>
         <div className="mb-4 text-center">
           <p className="text-sm text-gray-600">
@@ -394,29 +399,6 @@ const AddProject = () => {
             <Select
               options={installmentOptions}
               styles={customStyles}
-              components={{
-                Option: CustomOption,
-                SingleValue: CustomSingleValue,
-                IndicatorSeparator: () => null,
-                DropdownIndicator: () => (
-                  <div className="mr-2">
-                    <svg
-                      className="w-4 h-4 text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 9l-7 7-7-7"
-                      />
-                    </svg>
-                  </div>
-                ),
-                ClearIndicator: ClearIndicator,
-              }}
               placeholder="Select installment..."
               value={installmentOptions.find(
                 (option) => option.value === formData.plan
@@ -443,9 +425,8 @@ const AddProject = () => {
               </p>
             )}
           </div>
-            
 
-          {/* Sign Image Name */}
+          {/* Sign Image */}
           <div className="md:col-span-2 space-y-1">
             <label className="block text-sm font-medium text-gray-700">
               Sign Image
@@ -462,6 +443,11 @@ const AddProject = () => {
             {selectedFileName && (
               <p className="text-sm text-gray-600 mt-1">
                 Selected file: {selectedFileName}
+              </p>
+            )}
+            {currentSignImage && !selectedFileName && (
+              <p className="text-sm text-gray-600 mt-1">
+                Current image: {currentSignImage}
               </p>
             )}
           </div>
@@ -502,7 +488,7 @@ const AddProject = () => {
                   Processing...
                 </span>
               ) : (
-                "Add Project"
+                "Update Project"
               )}
             </button>
           </div>
@@ -518,7 +504,7 @@ const AddProject = () => {
             </div>
             <h3 className="text-2xl font-bold text-gray-800 mb-2">Success!</h3>
             <p className="text-gray-600 mb-6">
-              Project added successfully.
+              Project updated successfully.
             </p>
             <div className="w-full bg-gray-200 rounded-full h-2.5">
               <div
@@ -533,4 +519,4 @@ const AddProject = () => {
   );
 };
 
-export default AddProject;
+export default EditProject; 

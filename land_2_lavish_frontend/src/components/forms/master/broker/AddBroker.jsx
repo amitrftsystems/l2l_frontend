@@ -1,804 +1,283 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState } from 'react';
 import PropTypes from 'prop-types';
-import { X } from "lucide-react";
+import axios from 'axios';
 
-
-const ErrorMessage = ({ error }) => (
-  <div className="text-xs text-red-600 mt-1 flex items-start">
-    <svg
-      className="mr-1 h-3 w-3 flex-shrink-0 mt-0.5"
-      fill="currentColor"
-      viewBox="0 0 20 20"
-    >
-      <path
-        fillRule="evenodd"
-        d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
-        clipRule="evenodd"
-      />
-    </svg>
-    {error}
-  </div>
-);
-
-ErrorMessage.propTypes = {
-  error: PropTypes.string.isRequired
-};
-
-const InputField = React.memo(
-  ({
-    label,
-    name,
-    type = "text",
-    required = false,
-    placeholder,
-    validationState,
-    validationError,
-    value,
-    onChange,
-    onBlur,
-    onKeyDown,
-    error,
-    inputRef,
-    submitting,
-    showErrorInline = false,
-    submitted = false,
-  }) => {
-    const showMandatoryError = submitted && required && !value;
-    const showValidationError = validationState;
-    const showError = showMandatoryError || error;
-
-    return (
-      <>
-      <div className="mb-4 flex items-start">
-        <label className="w-1/4 text-sm font-medium mt-2">
-          {label} {required && <span className="text-red-600">*</span>}
-        </label>
-        <div className="w-3/4">
-          <div className="relative">
-            <input
-              type={type}
-              name={name}
-              value={value}
-              onChange={onChange}
-              onBlur={onBlur}
-              ref={inputRef}
-              onKeyDown={onKeyDown}
-              className={`w-full p-2 border rounded focus:outline-none focus:ring-1 ${
-                showError || showValidationError
-                  ? "border-red-500 focus:ring-red-500"
-                  : "border-gray-300 focus:ring-green-500"
-              }`}
-              placeholder={placeholder}
-              required={required}
-              disabled={submitting}
-            />
-            {(showError || showValidationError) && showErrorInline && (
-              <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                <X className="h-4 w-4 text-red-500" />
-              </div>
-            )}
-          </div>
-          {showError && <ErrorMessage error={error || `${label} is required`} />}
-          {showValidationError && <ErrorMessage error={validationError} />}
-        </div>
-      </div>
-      </>
-    );
-  }
-);
-
-InputField.displayName = 'InputField';
-InputField.propTypes = {
-  label: PropTypes.string.isRequired,
-  name: PropTypes.string.isRequired,
-  type: PropTypes.string,
-  required: PropTypes.bool,
-  placeholder: PropTypes.string,
-  nextField: PropTypes.string,
-  validationState: PropTypes.bool,
-  validationError: PropTypes.string,
-  value: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
-  onChange: PropTypes.func.isRequired,
-  onBlur: PropTypes.func,
-  onKeyDown: PropTypes.func,
-  error: PropTypes.string,
-  inputRef: PropTypes.object,
-  submitting: PropTypes.bool,
-  showErrorInline: PropTypes.bool,
-  submitted: PropTypes.bool
-};
-
-const SearchableDropdown = React.memo(
-  ({
-    options,
-    value,
-    onChange,
-    placeholder,
-    loading,
-    error,
-    disabled,
-    inputRef,
-    onKeyDown,
-    showErrorInline = false,
-    required = false,
-    submitted = false,
-  }) => {
-    const [searchTerm, setSearchTerm] = useState("");
-    const [isOpen, setIsOpen] = useState(false);
-    const dropdownRef = useRef(null);
-
-    const filteredOptions = options.filter((option) =>
-      option.project_name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    const handleClickOutside = useCallback((event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsOpen(false);
-      }
-    }, []);
-
-    useEffect(() => {
-      document.addEventListener("mousedown", handleClickOutside);
-      return () => {
-        document.removeEventListener("mousedown", handleClickOutside);
-      };
-    }, [handleClickOutside]);
-
-    const handleSelect = (projectId) => {
-      onChange({ target: { name: "project_id", value: projectId } });
-      setIsOpen(false);
-      setSearchTerm("");
-    };
-
-    const selectedProject = options.find((opt) => opt.project_id === value);
-    const showError = submitted && required && !value;
-
-    return (
-      <div className="mb-4 flex items-start">
-        <label className="w-1/4 text-sm font-medium mt-2">
-          {placeholder} {required && <span className="text-red-600">*</span>}
-        </label>
-        <div className="w-3/4">
-          <div className="relative" ref={dropdownRef}>
-            <div
-              className={`w-full p-2 border rounded focus:outline-none focus:ring-1 cursor-pointer ${
-                showError || error
-                  ? "border-red-500 focus:ring-red-500"
-                  : "border-gray-300 focus:ring-green-500"
-              } ${disabled ? "bg-gray-100" : ""}`}
-              onClick={() => !disabled && setIsOpen(!isOpen)}
-            >
-              {loading ? (
-                <div className="text-sm">Loading projects...</div>
-              ) : selectedProject ? (
-                selectedProject.project_name
-              ) : (
-                <span className="text-gray-400">{placeholder}</span>
-              )}
-              {(showError || error) && showErrorInline && (
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                  <X className="h-4 w-4 text-red-500" />
-                </div>
-              )}
-            </div>
-            {showError && <ErrorMessage error={`${placeholder} is required`} />}
-            {error && <ErrorMessage error={error} />}
-
-            {isOpen && (
-              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded shadow-lg">
-                <input
-                  type="text"
-                  className="w-full p-2 border-b border-gray-300 focus:outline-none text-sm"
-                  placeholder="Type to search..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  autoFocus
-                  ref={inputRef}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && filteredOptions.length > 0) {
-                      handleSelect(filteredOptions[0].project_id);
-                    } else {
-                      onKeyDown && onKeyDown(e);
-                    }
-                  }}
-                />
-                <div className="max-h-60 overflow-y-auto">
-                  {filteredOptions.length > 0 ? (
-                    filteredOptions.map((project) => (
-                      <div
-                        key={project.project_id}
-                        className="p-2 hover:bg-gray-100 cursor-pointer text-sm"
-                        onClick={() => handleSelect(project.project_id)}
-                      >
-                        {project.project_name}
-                      </div>
-                    ))
-                  ) : (
-                    <div className="p-2 text-gray-500 text-sm">No projects found</div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
-);
-
-SearchableDropdown.displayName = 'SearchableDropdown';
-SearchableDropdown.propTypes = {
-  options: PropTypes.arrayOf(PropTypes.shape({
-    project_id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
-    project_name: PropTypes.string.isRequired
-  })).isRequired,
-  value: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
-  onChange: PropTypes.func.isRequired,
-  placeholder: PropTypes.string.isRequired,
-  loading: PropTypes.bool,
-  error: PropTypes.string,
-  disabled: PropTypes.bool,
-  inputRef: PropTypes.object,
-  onKeyDown: PropTypes.func,
-  showErrorInline: PropTypes.bool,
-  required: PropTypes.bool,
-  submitted: PropTypes.bool
-};
-
-const AddBroker = () => {
+const AddBroker = ({ onClose, onSuccess, projects }) => {
   const [formData, setFormData] = useState({
-    project_id: "",
-    broker_id: "",
-    name: "",
-    address: "",
-    mobile: "",
-    email: "",
-    phone: "",
-    fax: "",
-    incomeTaxWardNo: "",
-    disttNo: "",
-    panNo: "",
+    project_id: '',
+    name: '',
+    address: '',
+    mobile: '',
+    email: '',
+    phone: '',
+    fax: '',
+    income_tax_ward_no: '',
+    dist_no: '',
+    pan_no: '',
+    net_commission_rate: ''
   });
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-  const [projects, setProjects] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [errors, setErrors] = useState({});
-  const [validationStates, setValidationStates] = useState({
-    broker_id: false,
-    mobile: false,
-    email: false,
-    phone: false,
-    panNo: false,
-  });
-  const [validationErrors] = useState({
-    broker_id: "Only numbers allowed",
-    mobile: "Must be exactly 10 digits",
-    email: "Invalid email format",
-    phone: "Invalid phone number (only numbers, +, - and spaces allowed)",
-    panNo: "Invalid PAN format (must be 10 characters: 5 letters, 4 numbers, 1 letter)",
-  });
-
-  const projectIdRef = useRef(null);
-  const brokerIdRef = useRef(null);
-  const nameRef = useRef(null);
-  const addressRef = useRef(null);
-  const mobileRef = useRef(null);
-  const emailRef = useRef(null);
-  const phoneRef = useRef(null);
-  const faxRef = useRef(null);
-  const incomeTaxWardNoRef = useRef(null);
-  const disttNoRef = useRef(null);
-  const panNoRef = useRef(null);
-
-  const inputRefs = useMemo(() => ({
-    project_id: projectIdRef,
-    broker_id: brokerIdRef,
-    name: nameRef,
-    address: addressRef,
-    mobile: mobileRef,
-    email: emailRef,
-    phone: phoneRef,
-    fax: faxRef,
-    incomeTaxWardNo: incomeTaxWardNoRef,
-    disttNo: disttNoRef,
-    panNo: panNoRef,
-  }), []);
-
-  useEffect(() => {
-    const fetchProjects = async () => {
-      try {
-        const response = await fetch(
-          "http://localhost:5000/api/master/get-projects"
-        );
-        if (!response.ok)
-          throw new Error(`HTTP error! status: ${response.status}`);
-        const data = await response.json();
-        if (data.success) setProjects(data.data);
-        else setErrors({ fetch: data.message || "Failed to load projects" });
-      } catch (error) {
-        setErrors({ fetch: error.message });
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchProjects();
-  }, []);
-
-  const handleChange = useCallback(
-    (e) => {
-      const { name, value } = e.target;
-
-      if (name === "panNo") {
-        const cleanedValue = value.replace(/[^a-zA-Z0-9]/g, "");
-        const upperValue = cleanedValue.toUpperCase();
-        setFormData((prev) => ({ ...prev, [name]: upperValue }));
-
-        if (errors.panNo) {
-          setErrors((prev) => ({ ...prev, panNo: "" }));
-        }
-        return;
-      }
-
-      if (name === "broker_id") {
-        const isValid = value && !/^\d*$/.test(value);
-        setValidationStates((prev) => ({ ...prev, [name]: isValid }));
-        if (!isValid && errors.broker_id) {
-          setErrors((prev) => ({ ...prev, broker_id: "" }));
-        }
-      }
-
-      if (name === "mobile") {
-        const onlyNums = value.replace(/[^0-9]/g, "");
-        if (onlyNums !== value) {
-          e.target.value = formData.mobile;
-          return;
-        }
-        const isValid = value.length > 10;
-        setValidationStates((prev) => ({ ...prev, [name]: isValid }));
-        if (!isValid && errors.mobile) {
-          setErrors((prev) => ({ ...prev, mobile: "" }));
-        }
-      }
-
-      if (name === "phone") {
-        const phoneRegex = /^[\d+\-\s]{6,15}$/;
-        const isValid = value && !phoneRegex.test(value);
-        setValidationStates((prev) => ({ ...prev, [name]: isValid }));
-        if (!isValid && errors.phone) {
-          setErrors((prev) => ({ ...prev, phone: "" }));
-        }
-      }
-
-      setFormData((prev) => ({ ...prev, [name]: value }));
-      if (errors[name]) {
-        setErrors((prev) => ({ ...prev, [name]: "" }));
-      }
-    },
-    [errors, formData.mobile]
-  );
-
-  const handleBlur = useCallback(
-    (e) => {
-      const { name, value } = e.target;
-      
-      if (name === "mobile") {
-        const isValid = value && value.length !== 10;
-        setValidationStates((prev) => ({ ...prev, [name]: isValid }));
-      }
-      
-      if (name === "email") {
-        const isValid = value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-        setValidationStates((prev) => ({ ...prev, [name]: isValid }));
-      }
-      
-      if (name === "phone") {
-        const phoneRegex = /^[\d+\-\s]{6,15}$/;
-        const isValid = value && !phoneRegex.test(value);
-        setValidationStates((prev) => ({ ...prev, [name]: isValid }));
-      }
-      
-      if (name === "panNo") {
-        const isValid =
-          value && (value.length < 10 || !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(value));
-        setValidationStates((prev) => ({ ...prev, [name]: isValid }));
-      }
-    },
-    []
-  );
-
-  const handleKeyDown = useCallback(
-    (e, nextField) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        if (nextField && inputRefs[nextField]?.current) {
-          inputRefs[nextField].current.focus();
-        }
-      }
-    },
-    [inputRefs]
-  );
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({
+      ...formData,
+      [name]: value
+    });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setSubmitted(true);
-    setSubmitting(true);
-    setErrors({});
-
-    // Define all mandatory fields
-    const mandatoryFields = [
-      { name: 'project_id', message: 'Location is required' },
-      { name: 'broker_id', message: 'Code is required' },
-      { name: 'name', message: 'Name is required' },
-      { name: 'address', message: 'Address is required' }
-    ];
-
-    // Check for empty mandatory fields
-    const newErrors = {};
-    mandatoryFields.forEach(field => {
-      if (!formData[field.name]) {
-        newErrors[field.name] = field.message;
-      }
-    });
-
-    // Validate mobile format if provided
-    if (formData.mobile && formData.mobile.length !== 10) {
-      setValidationStates((prev) => ({ ...prev, mobile: true }));
-    }
-
-    // Validate email format if provided
-    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      setValidationStates((prev) => ({ ...prev, email: true }));
-    }
-
-    // Validate phone format if provided
-    if (formData.phone && !/^[\d+\-\s]{6,15}$/.test(formData.phone)) {
-      setValidationStates((prev) => ({ ...prev, phone: true }));
-    }
-
-    // Validate PAN format if provided
-    if (
-      formData.panNo &&
-      (formData.panNo.length < 10 ||
-        !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.panNo))
-    ) {
-      setValidationStates((prev) => ({ ...prev, panNo: true }));
-    }
-
-    // If there are any errors, stop submission
-    if (Object.keys(newErrors).length > 0 || Object.values(validationStates).some(v => v)) {
-      setErrors(newErrors);
-      setSubmitting(false);
-      
-      // Focus on the first error field
-      const firstErrorField = mandatoryFields.find(field => newErrors[field.name])?.name || 
-                            Object.keys(validationStates).find(field => validationStates[field]);
-      if (firstErrorField && inputRefs[firstErrorField]?.current) {
-        inputRefs[firstErrorField].current.focus();
-      }
-      
-      return;
-    }
-
-    // Submit the form if validation passes
     try {
-      const response = await fetch(
-        "http://localhost:5000/api/master/add-broker",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            project_id: Number(formData.project_id),
-            code: formData.broker_id,
-            name: formData.name,
-            address: formData.address,
-            mobile: formData.mobile,
-            email: formData.email,
-            phone: formData.phone,
-            fax: formData.fax,
-            income_tax_ward_no: formData.incomeTaxWardNo,
-            dist_no: formData.disttNo,
-            pan_no: formData.panNo,
-            net_commission_rate: 0
-          }),
-        }
-      );
+      setLoading(true);
+      setError(null);
 
-      const data = await response.json();
-      console.log("Response data:", data);
-
-      if (!response.ok) {
-        if (data.field) {
-          setErrors((prev) => ({
-            ...prev,
-            [data.field]: data.message,
-          }));
-
-          if (inputRefs[data.field]?.current) {
-            inputRefs[data.field].current.focus();
-            inputRefs[data.field].current.select();
-          }
-        } else {
-          throw new Error(data.message || "Failed to add broker");
-        }
-      } else {
-        alert("Broker added successfully!");
-        window.history.back();
-        console.log("Broker added successfully!");
-        setFormData({
-          project_id: "",
-          broker_id: "",
-          name: "",
-          address: "",
-          mobile: "", 
-          email: "",
-          phone: "",
-          fax: "",
-          incomeTaxWardNo: "",
-          disttNo: "",
-          panNo: "",
-        });
+      // Validate required fields
+      if (!formData.project_id || !formData.name) {
+        setError('Project and Name are required');
+        return;
       }
-    } catch (error) {
-      if (error.message.includes("Broker with ID")) {
-        setErrors((prev) => ({ ...prev, broker_id: error.message }));
+
+      // Convert numeric fields
+      const dataToSubmit = {
+        ...formData,
+        project_id: parseInt(formData.project_id),
+        net_commission_rate: formData.net_commission_rate ? parseFloat(formData.net_commission_rate) : 0
+      };
+
+      const response = await axios.post('http://localhost:5000/api/master/add-broker', dataToSubmit);
+      
+      if (response.data.success) {
+        onSuccess();
+        onClose();
       } else {
-        setErrors((prev) => ({ ...prev, submit: error.message }));
+        setError(response.data.message || 'Failed to add broker');
       }
+    } catch (err) {
+      console.error('Error adding broker:', err);
+      setError(err.response?.data?.message || 'Failed to add broker');
     } finally {
-      setSubmitting(false);
+      setLoading(false);
     }
   };
 
   return (
-    <div className="flex justify-center items-center min-h-screen bg-[#040009d3]">
-      <form
-        onSubmit={handleSubmit}
-        className="relative w-[600px] bg-white p-6 rounded shadow"
-      >
-        <h2 className="text-xl font-bold text-center text-black mb-2">
-          Broker Details
-        </h2>
-        <p className="text-center text-xs text-red-500 mb-4">
-          Fields marked by <span className="text-red-600">*</span> are mandatory
-        </p>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-medium text-gray-900">Add New Broker</h3>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
 
-        {errors.fetch && (
-          <div className="mb-4 p-2 bg-red-100 text-red-700 rounded text-sm">
-            {errors.fetch}
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            {error}
           </div>
         )}
-
-        <div className="grid grid-cols-1 gap-1">
-          {/* Project Dropdown */}
-          <SearchableDropdown
-            options={projects}
-            value={formData.project_id}
-            onChange={handleChange}
-            placeholder="Select Location"
-            loading={loading}
-            error={errors.project_id}
-            disabled={submitting}
-            inputRef={inputRefs.project_id}
-            onKeyDown={(e) => handleKeyDown(e, "broker_id")}
-            showErrorInline={!!errors.project_id}
-            required={true}
-            submitted={submitted}
-          />
-
-          {/* Broker ID */}
-          <InputField
-            label="Code"
-            name="broker_id"
-            type="text"
-            required={true}
-            placeholder="Enter code"
-            nextField="name"
-            validationState={validationStates.broker_id}
-            validationError={validationErrors.broker_id}
-            value={formData.broker_id}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            onKeyDown={(e) => handleKeyDown(e, "name")}
-            error={errors.broker_id}
-            inputRef={inputRefs.broker_id}
-            submitting={submitting}
-            showErrorInline={validationStates.broker_id || !!errors.broker_id}
-            submitted={submitted}
-          />
-
-          {/* Name */}
-          <InputField
-            label="Name"
-            name="name"
-            type="text"
-            required={true}
-            placeholder="Enter name"
-            nextField="address"
-            value={formData.name}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            onKeyDown={(e) => handleKeyDown(e, "address")}
-            error={errors.name}
-            inputRef={inputRefs.name}
-            submitting={submitting}
-            showErrorInline={!!errors.name}
-            submitted={submitted}
-          />
-
-          {/* Address */}
-          <InputField
-            label="Address"
-            name="address"
-            type="text"
-            required={true}
-            placeholder="Enter address"
-            nextField="mobile"
-            value={formData.address}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            onKeyDown={(e) => handleKeyDown(e, "mobile")}
-            error={errors.address}
-            inputRef={inputRefs.address}
-            submitting={submitting}
-            showErrorInline={!!errors.address}
-            submitted={submitted}
-          />
-
-          {/* Mobile */}
-          <InputField
-            label="Mobile"
-            name="mobile"
-            type="tel"
-            placeholder="Enter mobile (10 digits)"
-            nextField="email"
-            validationState={validationStates.mobile}
-            validationError={validationErrors.mobile}
-            value={formData.mobile}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            onKeyDown={(e) => handleKeyDown(e, "email")}
-            error={errors.mobile}
-            inputRef={inputRefs.mobile}
-            submitting={submitting}
-            showErrorInline={validationStates.mobile || !!errors.mobile}
-            submitted={submitted}
-          />
-
-          {/* Email */}
-          <InputField
-            label="E-Mail"
-            name="email"
-            type="email"
-            placeholder="Enter email"
-            nextField="phone"
-            validationState={validationStates.email}
-            validationError={validationErrors.email}
-            value={formData.email}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            onKeyDown={(e) => handleKeyDown(e, "phone")}
-            error={errors.email}
-            inputRef={inputRefs.email}
-            submitting={submitting}
-            showErrorInline={validationStates.email || !!errors.email}
-            submitted={submitted}
-          />
-
-          {/* Phone */}
-          <InputField
-            label="Phone"
-            name="phone"
-            type="tel"
-            placeholder="Enter phone"
-            nextField="fax"
-            validationState={validationStates.phone}
-            validationError={validationErrors.phone}
-            value={formData.phone}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            onKeyDown={(e) => handleKeyDown(e, "fax")}
-            error={errors.phone}
-            inputRef={inputRefs.phone}
-            submitting={submitting}
-            showErrorInline={validationStates.phone || !!errors.phone}
-            submitted={submitted}
-          />
-
-          {/* Fax */}
-          <InputField
-            label="Fax"
-            name="fax"
-            type="tel"
-            placeholder="Enter fax"
-            nextField="incomeTaxWardNo"
-            value={formData.fax}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            onKeyDown={(e) => handleKeyDown(e, "incomeTaxWardNo")}
-            error={errors.fax}
-            inputRef={inputRefs.fax}
-            submitting={submitting}
-            showErrorInline={!!errors.fax}
-            submitted={submitted}
-          />
-
-          {/* Income Tax Ward No. */}
-          <InputField
-            label="Income Tax"
-            name="incomeTaxWardNo"
-            type="text"
-            placeholder="Enter income tax"
-            nextField="disttNo"
-            value={formData.incomeTaxWardNo}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            onKeyDown={(e) => handleKeyDown(e, "disttNo")}
-            error={errors.incomeTaxWardNo}
-            inputRef={inputRefs.incomeTaxWardNo}
-            submitting={submitting}
-            showErrorInline={!!errors.incomeTaxWardNo}
-            submitted={submitted}
-          />
-
-          {/* Distt No. */}
-          <InputField
-            label="Distr No."
-            name="disttNo"
-            type="text"
-            placeholder="Enter district no."
-            nextField="panNo"
-            value={formData.disttNo}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            onKeyDown={(e) => handleKeyDown(e, "panNo")}
-            error={errors.disttNo}
-            inputRef={inputRefs.disttNo}
-            submitting={submitting}
-            showErrorInline={!!errors.disttNo}
-            submitted={submitted}
-          />
-
-          {/* Pan No. */}
-          <InputField
-            label="Pan No."
-            name="panNo"
-            type="text"
-            placeholder="Enter PAN number"
-            validationState={validationStates.panNo}
-            validationError={validationErrors.panNo}
-            value={formData.panNo}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            error={errors.panNo}
-            inputRef={inputRefs.panNo}
-            submitting={submitting}
-            showErrorInline={validationStates.panNo || !!errors.panNo}
-            submitted={submitted}
-          />
-
-          {errors.submit && (
-            <div className="mt-2 p-2 bg-red-100 text-red-700 rounded text-sm text-center">
-              {errors.submit.startsWith("<!DOCTYPE html>")
-                ? "Server error occurred"
-                : errors.submit}
+            
+        <form onSubmit={handleSubmit}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Project Selection */}
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Project *
+              </label>
+              <select
+                name="project_id"
+                value={formData.project_id}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              >
+                <option value="">Select Project</option>
+                {projects.map(project => (
+                  <option key={project.project_id} value={project.project_id}>
+                    {project.project_name}
+                  </option>
+                ))}
+              </select>
             </div>
-          )}
-
-          <div className="flex justify-center mt-4">
+            
+            {/* Broker Name */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Name *
+              </label>
+              <input
+                type="text"
+                name="name"
+                value={formData.name}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
+            </div>
+            
+            {/* Address */}
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Address
+              </label>
+              <textarea
+                name="address"
+                value={formData.address}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                rows="3"
+              />
+            </div>
+            
+            {/* Mobile */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Mobile
+              </label>
+              <input
+                type="text"
+                name="mobile"
+                value={formData.mobile}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            
+            {/* Email */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Email
+              </label>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            
+            {/* Phone */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Phone
+              </label>
+              <input
+                type="text"
+                name="phone"
+                value={formData.phone}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            
+            {/* Fax */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Fax
+              </label>
+              <input
+                type="text"
+                name="fax"
+                value={formData.fax}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            
+            {/* Income Tax Ward No */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Income Tax Ward No
+              </label>
+              <input
+                type="text"
+                name="income_tax_ward_no"
+                value={formData.income_tax_ward_no}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            
+            {/* District No */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Dist No
+              </label>
+              <input
+                type="text"
+                name="dist_no"
+                value={formData.dist_no}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            
+            {/* PAN No */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                PAN No
+              </label>
+              <input
+                type="text"
+                name="pan_no"
+                value={formData.pan_no}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            
+            {/* Net Commission Rate */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Net Commission Rate
+              </label>
+              <input
+                type="number"
+                name="net_commission_rate"
+                value={formData.net_commission_rate}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                step="0.01"
+              />
+            </div>
+          </div>
+          
+          <div className="mt-6 flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded"
+            >
+              Cancel
+            </button>
             <button
               type="submit"
-              className="w-1/3 p-2 bg-green-400 text-white rounded hover:bg-green-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed text-sm"
-              disabled={loading || submitting}
+              disabled={loading}
+              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50"
             >
-              {submitting ? "Submitting..." : "Add"}
+              {loading ? 'Adding...' : 'Add Broker'}
             </button>
           </div>
-        </div>
-      </form>
+        </form>
+      </div>
     </div>
   );
+};
+
+AddBroker.propTypes = {
+  onClose: PropTypes.func.isRequired,
+  onSuccess: PropTypes.func.isRequired,
+  projects: PropTypes.arrayOf(PropTypes.shape({
+    project_id: PropTypes.number.isRequired,
+    project_name: PropTypes.string.isRequired
+  })).isRequired
 };
 
 export default AddBroker;

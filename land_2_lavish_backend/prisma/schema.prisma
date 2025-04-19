@@ -69,8 +69,10 @@ model Broker {
   income_tax_ward_no String?
   dist_no         String?
   pan_no          String?
+  project_name    String
+  project_id      Int 
+  project         Project @relation(fields: [project_id], references: [project_id])
   net_commission_rate Float  @default(0.0)
-  primary_projects Project[] @relation("PrimaryBroker")
   associated_projects Project[] @relation("ProjectBrokers")
   customers       Customer[]
 }
@@ -97,7 +99,7 @@ model CoApplicant {
 
 model Customer {
   customer_id          String        @id
-  project_id          String
+  project_id          Int
   broker_id           Int?
   property_type       String?
   booking_receipt_no  String?
@@ -174,18 +176,19 @@ model Plc {
 }
 
 model Project {
-  project_id    String   @id @unique
+  project_id    Int      @id @default(autoincrement())
+  project_name  String   @unique
   company_name  String
-  address       String
+  address       String    
   landmark      String?
-  broker_id     Int?
   plan          String
-  primary_broker Broker?  @relation("PrimaryBroker", fields: [broker_id], references: [broker_id])
+  sign_img      String?
   installment_plan InstallmentPlan @relation(fields: [plan], references: [plan_name])
   customers     Customer[]
   registration_forms RegistrationForm[]
   stocks        Stock[]
   associated_brokers Broker[] @relation("ProjectBrokers")
+  brokers Broker[]
 }
 
 model Property {
@@ -210,7 +213,7 @@ model PropertySize {
 model RegistrationForm {
   id              Int      @id @default(autoincrement())
   customer_id     String
-  project_id      String
+  project_id      Int
   unit_id         String
   manual_application_number String? @unique
   booking_receipt_number String?
@@ -242,7 +245,7 @@ model RegistrationForm {
 
 model Stock {
   stock_id        Int      @id @default(autoincrement())
-  project_id      String
+  project_id      Int
   property_id     Int
   property_type   String?
   size            Int?

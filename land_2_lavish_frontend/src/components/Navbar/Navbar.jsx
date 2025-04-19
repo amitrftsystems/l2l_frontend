@@ -171,7 +171,7 @@ export default function Navbar() {
                   { name: "PLC", link: "/masters/add-new-plc" },
                   { name: "Unit Size", link: "/masters/add-unit-size" },
                   { name: "Stock", link: "/masters/stock" },
-                  { name: "Broker", link: "/masters/add-broker" },
+                  { name: "Broker", link: "/masters/broker-list" },
                   {
                     name: "Customer Registration",
                     subItems: [

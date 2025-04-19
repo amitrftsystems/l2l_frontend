@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 function AddNewPlan() {
   const [planName, setPlanName] = useState("");
@@ -6,6 +6,12 @@ function AddNewPlan() {
   const [tableData, setTableData] = useState(null);
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
+  const [installmentPlans, setInstallmentPlans] = useState([]);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    fetchInstallments();
+  }, []);
 
   // Handle form input changes and validate
   const handleFormChange = (e) => {
@@ -135,13 +141,13 @@ function AddNewPlan() {
     const updatedErrors = {};
     const updatedTouched = {};
     Object.keys(errors).forEach((key) => {
-      const [field, rowIndex] = key.split("-");
+      const [, rowIndex] = key.split("-");
       if (!rowIndex || parseInt(rowIndex) < installments) {
         updatedErrors[key] = errors[key];
       }
     });
     Object.keys(touched).forEach((key) => {
-      const [field, rowIndex] = key.split("-");
+      const [, rowIndex] = key.split("-");
       if (!rowIndex || parseInt(rowIndex) < installments) {
         updatedTouched[key] = touched[key];
       }
@@ -318,12 +324,61 @@ function AddNewPlan() {
     }
   };
 
+  const fetchInstallments = async () => {
+    try {
+      const response = await fetch("http://localhost:5000/api/master/get-installment-plan");
+      if (!response.ok) {
+        throw new Error("Failed to fetch installment plans");
+      }
+      const data = await response.json();
+      if (data.success) {
+        setInstallmentPlans(data.data);
+      } else {
+        throw new Error(data.message || "Failed to fetch installment plans");
+      }
+    } catch (error) {
+      console.error("Error fetching installment plans:", error);
+      setError("Failed to load installment plans. Please try again later.");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#272727] flex items-center justify-center p-4">
       <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-6xl">
         <h2 className="text-2xl font-bold mb-6 text-center">
           Add New Installment Plan
         </h2>
+
+        {error && (
+          <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-md">
+            {error}
+          </div>
+        )}
+
+        {/* Existing Installment Plans */}
+        {installmentPlans.length > 0 && (
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold mb-3">Existing Installment Plans</h3>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Plan Name</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Number of Installments</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {installmentPlans.map((plan) => (
+                    <tr key={plan.plan_name}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{plan.plan_name}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{plan.no_of_installments}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="mb-6">

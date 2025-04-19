@@ -13,19 +13,18 @@ export const addBroker = async (req, res) => {
       income_tax_ward_no,
       dist_no,
       pan_no,
-      net_commission_rate,
-      code
+      net_commission_rate
     } = req.body;
 
     // Validate required fields
-    if (!project_id || !name || !code) {
+    if (!project_id || !name) {
       return res.status(400).json({
         success: false,
-        message: "Project ID, name, and code are required"
+        message: "Project ID and name are required"
       });
     }
 
-    // Check if project exists
+    // Check if project exists and get project details
     const project = await prisma.project.findUnique({
       where: { project_id: parseInt(project_id) }
     });
@@ -37,24 +36,9 @@ export const addBroker = async (req, res) => {
       });
     }
 
-    // Check if broker code already exists
-    const existingBroker = await prisma.broker.findFirst({
-      where: {
-        code: parseInt(code)
-      }
-    });
-
-    if (existingBroker) {
-      return res.status(400).json({
-        success: false,
-        message: "Broker code already exists"
-      });
-    }
-
-    // Create the broker
+    // Create the broker with project details
     const newBroker = await prisma.broker.create({ 
       data: {
-        project_id: parseInt(project_id),
         name,
         address,
         mobile,
@@ -65,13 +49,29 @@ export const addBroker = async (req, res) => {
         dist_no,
         pan_no,
         net_commission_rate: parseFloat(net_commission_rate) || 0,
-        code: parseInt(code)
+        project_name: project.project_name,
+        project_id: project.project_id,
+        associated_projects: {
+          connect: {
+            project_id: parseInt(project_id)
+          }
+        }
+      },
+      include: {
+        associated_projects: true
       }
     });
 
+    // Transform the response
+    const transformedBroker = {
+      ...newBroker,
+      project: newBroker.associated_projects[0] || null,
+      associated_projects: undefined
+    };
+
     return res.status(201).json({
       success: true,
-      data: newBroker,
+      data: transformedBroker,
       message: "Broker added successfully"
     });
 
@@ -92,7 +92,7 @@ export const editBroker = async (req, res) => {
     }
 
     const { 
-      broker_id, project_id, name, code,address, mobile, email, phone, 
+      broker_id, project_ids, name, address, mobile, email, phone, 
       fax, income_tax_ward_no, dist_no, pan_no, net_commission_rate 
     } = req.body;
 
@@ -121,9 +121,7 @@ export const editBroker = async (req, res) => {
     // Create update object dynamically
     const updateData = {};
 
-    if (project_id !== undefined) updateData.project_id = project_id;
-    if (name !== undefined) updateData.name = name;                                   
-    if (code !== undefined) updateData.code = code;
+    if (name !== undefined) updateData.name = name;
     if (address !== undefined) updateData.address = address;
     if (mobile !== undefined) updateData.mobile = mobile;
     if (email !== undefined) updateData.email = email;
@@ -134,17 +132,42 @@ export const editBroker = async (req, res) => {
     if (pan_no !== undefined) updateData.pan_no = pan_no;
     if (net_commission_rate !== undefined) updateData.net_commission_rate = net_commission_rate;
 
-    if (Object.keys(updateData).length === 0) {
+    if (Object.keys(updateData).length === 0 && !project_ids) {
       return res.status(400).json({ success: false, message: "No fields provided for update." });
     }
 
-    // Update via Prisma
-    const updatedBroker = await prisma.broker.update({
+    // First, disconnect all existing project associations
+    await prisma.broker.update({
       where: { broker_id: parseInt(broker_id) },
-      data: updateData,
+      data: {
+        associated_projects: {
+          set: []
+        }
+      }
     });
 
-    res.status(200).json({ success: true, data: updatedBroker });
+    // Then update the broker with new data and project associations
+    const updatedBroker = await prisma.broker.update({
+      where: { broker_id: parseInt(broker_id) },
+      data: {
+        ...updateData,
+        associated_projects: project_ids ? {
+          connect: project_ids.map(id => ({ project_id: parseInt(id) }))
+        } : undefined
+      },
+      include: {
+        associated_projects: true
+      }
+    });
+
+    // Transform the response
+    const transformedBroker = {
+      ...updatedBroker,
+      project: updatedBroker.associated_projects[0] || null,
+      associated_projects: undefined
+    };
+
+    res.status(200).json({ success: true, data: transformedBroker });
 
   } catch (error) {
     console.error("Error updating broker:", error);
@@ -160,40 +183,34 @@ export const editBroker = async (req, res) => {
 
 export const getBroker = async (req, res) => {
   try {
-    const { broker_id, project_id, name } = req.query;
+    const { broker_id, name } = req.query;
 
     // Build dynamic Prisma `where` clause
     const filters = {};
 
     if (broker_id) filters.broker_id = parseInt(broker_id);
-    if (project_id) filters.project_id = parseInt(project_id);
-    if (name) filters.name = { contains: name, mode: 'insensitive' }; // ILIKE equivalent
+    if (name) filters.name = { contains: name, mode: 'insensitive' };
 
     const brokers = await prisma.broker.findMany({
       where: filters,
       orderBy: {
         broker_id: 'desc'
       },
-      select: {
-        broker_id: true,
-        project_id: true,
-        name: true,
-        code: true,
-        address: true,
-        mobile: true,
-        email: true,
-        phone: true,
-        fax: true,
-        income_tax_ward_no: true,
-        dist_no: true,
-        pan_no: true,
-        net_commission_rate: true,
+      include: {
+        associated_projects: true
       }
     });
 
+    // Transform the response to include project information
+    const transformedBrokers = brokers.map(broker => ({
+      ...broker,
+      project: broker.associated_projects[0] || null,
+      associated_projects: undefined
+    }));
+
     res.status(200).json({
       success: true,
-      data: brokers,
+      data: transformedBrokers,
       message: "Brokers retrieved successfully"
     });
 
@@ -209,16 +226,26 @@ export const getBroker = async (req, res) => {
 
 export const getBrokerById = async (req, res) => {
   try {
-    const { broker_id } = req.params;
+    const { id } = req.params;
     const broker = await prisma.broker.findUnique({
-      where: { broker_id: parseInt(broker_id) }
+      where: { broker_id: parseInt(id) },
+      include: {
+        associated_projects: true
+      }
     });
 
     if (!broker) {
       return res.status(404).json({ success: false, message: "Broker not found." });
     }
 
-    res.status(200).json({ success: true, data: broker });
+    // Transform the response
+    const transformedBroker = {
+      ...broker,
+      project: broker.associated_projects[0] || null,
+      associated_projects: undefined
+    };
+
+    res.status(200).json({ success: true, data: transformedBroker });
 
   } catch (error) {
     console.error("Error fetching broker by ID:", error);
@@ -228,21 +255,48 @@ export const getBrokerById = async (req, res) => {
       error: error.message
     });
   }
-};    
+};
 
 export const deleteBroker = async (req, res) => {
   try {
-    const { broker_id } = req.params;
-    const deletedBroker = await prisma.broker.delete({
-      where: { broker_id: parseInt(broker_id) }
-    }); 
-    if (!deletedBroker) {
-      return res.status(404).json({ success: false, message: "Broker not found." });
+    const { id } = req.params;
+    
+    if (!id || isNaN(Number(id))) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Valid broker ID is required" 
+      });
     }
-    res.status(200).json({ success: true, message: "Broker deleted successfully." });
+
+    const brokerId = parseInt(id);
+    
+    // First check if broker exists
+    const existingBroker = await prisma.broker.findUnique({
+      where: { broker_id: brokerId }
+    });
+
+    if (!existingBroker) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Broker not found" 
+      });
+    }
+
+    // Delete the broker
+    await prisma.broker.delete({
+      where: { broker_id: brokerId }
+    });
+
+    res.status(200).json({ 
+      success: true, 
+      message: "Broker deleted successfully" 
+    });
   } catch (error) {
-    console.error("Error deleting broker:", error); 
-    res.status(500).json({ success: false, message: "Server error while deleting broker." });
+    console.error("Error deleting broker:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Server error while deleting broker." 
+    });
   }
 };
 

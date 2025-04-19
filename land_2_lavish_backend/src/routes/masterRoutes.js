@@ -63,7 +63,7 @@ router.post("/co-applicant", addCoApplicant);
 router.post("/add-new-installment-plan", addNewInstallmentPlan);
 router.post("/add-installment-details", addInstallmentDetails);
 router.get("/get-installment-plan", getInstallmentPlans);
-router.get("/get-installment-plan/:id", getInstallmentPlanByName);
+router.get("/get-installment-plan-by-name/:plan_name", getInstallmentPlanByName);
 router.put("/update-installment-plan/:id", updateInstallmentPlan);
 router.delete("/delete-installment-plan/:id", deleteInstallmentPlan)
 
