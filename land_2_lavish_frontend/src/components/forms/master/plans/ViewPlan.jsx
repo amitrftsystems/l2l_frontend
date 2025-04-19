@@ -43,7 +43,7 @@ const ViewPlan = () => {
       <div className="max-w-4xl mx-auto">
         <div className="mb-6">
           <Link 
-            to="/master/plans" 
+            to="/masters/plans" 
             className="flex items-center text-blue-600 hover:text-blue-800"
           >
             <ArrowLeft size={18} className="mr-1" />
@@ -71,7 +71,7 @@ const ViewPlan = () => {
               <div className="flex justify-between items-center">
                 <h1 className="text-2xl font-bold text-gray-800">{plan.plan_name}</h1>
                 <Link 
-                  to={`/master/plans/edit/${plan.plan_name}`}
+                  to={`/masters/plans/edit/${plan.plan_name}`}
                   className="flex items-center gap-2 bg-yellow-500 text-white px-4 py-2 rounded-md hover:bg-yellow-600 transition-colors"
                 >
                   <Pencil size={18} />

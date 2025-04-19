@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Eye, Edit, Trash2 } from "lucide-react";
+import { Eye, Edit, Trash2, Search } from "lucide-react";
 
 const ProjectsList = () => {
   const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
+  const [filteredProjects, setFilteredProjects] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -13,6 +15,18 @@ const ProjectsList = () => {
   useEffect(() => {
     fetchProjects();
   }, []);
+
+  useEffect(() => {
+    if (projects.length > 0) {
+      const filtered = projects.filter(
+        (project) =>
+          project.project_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          project.company_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          project.address.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      setFilteredProjects(filtered);
+    }
+  }, [searchQuery, projects]);
 
   const fetchProjects = async () => {
     try {
@@ -26,7 +40,13 @@ const ProjectsList = () => {
       const data = await response.json();
       
       if (data.success) {
+        // Log the first project to examine date format
+        if (data.data.length > 0) {
+          console.log("Sample project data:", data.data[0]);
+        }
+        
         setProjects(data.data);
+        setFilteredProjects(data.data);
       } else {
         throw new Error(data.message || "Failed to fetch projects");
       }
@@ -46,7 +66,7 @@ const ProjectsList = () => {
   const handleDeleteConfirm = async () => {
     try {
       const response = await fetch(
-        `http://localhost:5000/api/master/delete-project/${selectedProject.id}`,
+        `http://localhost:5000/api/master/project/${selectedProject.project_id}`,
         {
           method: "DELETE",
         }
@@ -55,7 +75,8 @@ const ProjectsList = () => {
       const data = await response.json();
       
       if (data.success) {
-        setProjects(projects.filter((p) => p.id !== selectedProject.id));
+        setProjects(projects.filter((p) => p.project_id !== selectedProject.project_id));
+        setFilteredProjects(filteredProjects.filter((p) => p.project_id !== selectedProject.project_id));
         setShowDeleteModal(false);
         setSelectedProject(null);
       } else {
@@ -78,11 +99,27 @@ const ProjectsList = () => {
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-800">Projects</h1>
           <button
-            onClick={() => navigate("/master/projects/add")}
+            onClick={() => navigate("/masters/add-project")}
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             Add New Project
           </button>
+        </div>
+
+        {/* Search Bar */}
+        <div className="mb-6">
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-5 w-5 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              placeholder="Search by project name, company, or address..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
         </div>
 
         {error && (
@@ -93,7 +130,15 @@ const ProjectsList = () => {
 
         {loading ? (
           <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          </div>
+        ) : filteredProjects.length === 0 ? (
+          <div className="bg-white rounded-lg p-6 text-center">
+            <p className="text-gray-500">
+              {searchQuery 
+                ? "No projects match your search criteria." 
+                : "No projects available. Add your first project!"}
+            </p>
           </div>
         ) : (
           <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -107,39 +152,31 @@ const ProjectsList = () => {
                     Location
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Created Date
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {projects.map((project) => (
-                  <tr key={project.id}>
+                {filteredProjects.map((project) => (
+                  <tr key={project.project_id}>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
                         {project.project_name}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">{project.location}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">
-                        {new Date(project.created_at).toLocaleDateString()}
-                      </div>
+                      <div className="text-sm text-gray-500">{project.address}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex space-x-3">
                         <button
-                          onClick={() => navigate(`/master/projects/view/${project.id}`)}
+                          onClick={() => navigate(`/masters/view-project/${project.project_id}`)}
                           className="text-blue-600 hover:text-blue-900"
                         >
                           <Eye size={18} />
                         </button>
                         <button
-                          onClick={() => navigate(`/master/projects/edit/${project.id}`)}
+                          onClick={() => navigate(`/masters/edit-project/${project.project_id}`)}
                           className="text-yellow-600 hover:text-yellow-900"
                         >
                           <Edit size={18} />
@@ -166,7 +203,7 @@ const ProjectsList = () => {
                 Confirm Delete
               </h3>
               <p className="text-sm text-gray-500 mb-4">
-                Are you sure you want to delete the project "{selectedProject.project_name}"? This action cannot be undone.
+                Are you sure you want to delete the project &quot;{selectedProject.project_name}&quot;? This action cannot be undone.
               </p>
               <div className="flex justify-end space-x-3">
                 <button

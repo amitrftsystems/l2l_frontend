@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import PropTypes from 'prop-types';
-import { useNavigate } from "react-router-dom";
-
+import { useNavigate, useParams } from "react-router-dom";
+import axios from "axios";
 
 const ErrorMessage = ({ error }) => (
   <div className="text-sm text-red-600 mb-1 flex items-center">
@@ -195,597 +195,508 @@ SearchableDropdown.propTypes = {
 };
 
 const EditBroker = () => {
+  const { id } = useParams();
   const navigate = useNavigate();
-  const [step, setStep] = useState(1); // 1: Select Project, 2: Select Broker, 3: Edit Form
+  
   const [formData, setFormData] = useState({
     project_id: "",
-    broker_id: "",
     name: "",
     address: "",
     mobile: "",
     email: "",
     phone: "",
     fax: "",
-    incomeTaxWardNo: "",
-    disttNo: "",
-    panNo: "",
-    netCommissionRate: "0.00"
+    income_tax_ward_no: "",
+    dist_no: "",
+    pan_no: "",
+    net_commission_rate: ""
   });
-
-  const [projects, setProjects] = useState([]);
-  const [brokers, setBrokers] = useState([]);
-  const [loading, setLoading] = useState({
-    projects: true,
-    brokers: false
-  });
-  const [submitting, setSubmitting] = useState(false);
-  const [errors, setErrors] = useState({});
-  const [showMobileInvalid, setShowMobileInvalid] = useState(false);
-  const [showEmailInvalid, setShowEmailInvalid] = useState(false);
-  const [showPhoneInvalid, setShowPhoneInvalid] = useState(false);
-  const [showPanNoInvalid, setShowPanNoInvalid] = useState(false);
-  const [showCommissionInvalid, setShowCommissionInvalid] = useState(false);
   
-  const inputRefs = {
-    project_id: useRef(null),
-    broker_id: useRef(null),
-    name: useRef(null),
-    address: useRef(null),
-    mobile: useRef(null),
-    email: useRef(null),
-    phone: useRef(null),
-    fax: useRef(null),
-    incomeTaxWardNo: useRef(null),
-    disttNo: useRef(null),
-    panNo: useRef(null),
-    netCommissionRate: useRef(null)
-  };
+  const [projects, setProjects] = useState([]);
+  const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [projectsLoading, setProjectsLoading] = useState(true);
+  const [brokerLoading, setBrokerLoading] = useState(true);
+  const [showSuccess, setShowSuccess] = useState(false);
 
-  // Fetch all projects on mount
+  // Fetch projects
   useEffect(() => {
     const fetchProjects = async () => {
       try {
-        const response = await fetch("http://localhost:5000/api/master/get-projects");
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        const data = await response.json();
-        if (data.success) setProjects(data.data);
-        else setErrors({ fetch: data.message || "Failed to load projects" });
-      } catch (error) {
-        setErrors({ fetch: error.message });
+        setProjectsLoading(true);
+        const response = await axios.get('http://localhost:5000/api/master/get-projects');
+        if (response.data.success) {
+          setProjects(response.data.data || []);
+        } else {
+          setErrors({...errors, project: 'Failed to load projects'});
+        }
+      } catch (err) {
+        console.error('Error fetching projects:', err);
+        setErrors({...errors, project: 'Failed to load projects'});
       } finally {
-        setLoading(prev => ({ ...prev, projects: false }));
+        setProjectsLoading(false);
       }
     };
+    
     fetchProjects();
   }, []);
 
-  // Fetch brokers when project is selected
+  // Fetch broker data
   useEffect(() => {
-    if (formData.project_id && step === 1) {
-      const fetchBrokers = async () => {
-        setLoading(prev => ({ ...prev, brokers: true }));
-        try {
-          const response = await fetch(`http://localhost:5000/api/master/get-brokers?project_id=${formData.project_id}`);
-          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-          const data = await response.json();
-          if (data.success) setBrokers(data.data);
-          else setErrors({ fetch: data.message || "Failed to load brokers" });
-        } catch (error) {
-          setErrors({ fetch: error.message });
-        } finally {
-          setLoading(prev => ({ ...prev, brokers: false }));
+    const fetchBroker = async () => {
+      try {
+        setBrokerLoading(true);
+        const response = await axios.get(`http://localhost:5000/api/master/get-broker/${id}`);
+        
+        if (response.data.success) {
+          const broker = response.data.data;
+          setFormData({
+            project_id: broker.project_id || "",
+            name: broker.name || "",
+            address: broker.address || "",
+            mobile: broker.mobile || "",
+            email: broker.email || "",
+            phone: broker.phone || "",
+            fax: broker.fax || "",
+            income_tax_ward_no: broker.income_tax_ward_no || "",
+            dist_no: broker.dist_no || "",
+            pan_no: broker.pan_no || "",
+            net_commission_rate: broker.net_commission_rate || ""
+          });
+        } else {
+          throw new Error(response.data.message || "Failed to fetch broker");
         }
-      };
-      fetchBrokers();
-    }
-  }, [formData.project_id, step]);
+      } catch (error) {
+        console.error("Error fetching broker:", error);
+        setErrors({...errors, fetch: "Failed to load broker. Please try again later."});
+      } finally {
+        setBrokerLoading(false);
+      }
+    };
 
-  // Load broker details when broker is selected
-  useEffect(() => {
-    if (formData.broker_id && step === 2) {
-      const fetchBrokerDetails = async () => {
-        setLoading(prev => ({ ...prev, brokers: true }));
-        try {
-          const response = await fetch(`http://localhost:5000/api/master/get-broker/:broker_id/${formData.broker_id}`);
-          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-          const data = await response.json();
-          if (data.success) {
-            setFormData({
-              ...formData,
-              name: data.data.name,
-              address: data.data.address,
-              mobile: data.data.mobile || "",
-              email: data.data.email || "",
-              phone: data.data.phone || "",
-              fax: data.data.fax || "",
-              incomeTaxWardNo: data.data.income_tax_ward_no || "",
-              disttNo: data.data.dist_no || "",
-              panNo: data.data.pan_no || "",
-              netCommissionRate: data.data.net_commission_rate || "0.00"
-            });
-            setStep(3);
-          } else {
-            setErrors({ fetch: data.message || "Failed to load broker details" });
-          }
-        } catch (error) {
-          setErrors({ fetch: error.message });
-        } finally {
-          setLoading(prev => ({ ...prev, brokers: false }));
-        }
-      };
-      fetchBrokerDetails();
+    if (id) {
+      fetchBroker();
     }
-  }, [formData.broker_id, step]);
+  }, [id]);
 
-  const handleChange = useCallback((e) => {
+  const handleInputChange = (e) => {
     const { name, value } = e.target;
     
-    // Handle PAN number uppercase conversion first
-    if (name === "panNo") {
-      // Remove any non-alphanumeric characters and convert to uppercase
-      const cleanedValue = value.replace(/[^a-zA-Z0-9]/g, '');
-      const upperValue = cleanedValue.toUpperCase();
-      setFormData(prev => ({ ...prev, [name]: upperValue }));
-      
-      // Clear PAN error if exists
-      if (errors.panNo) {
-        setErrors(prev => ({ ...prev, panNo: '' }));
-      }
-      return;
-    }
-
-    // Handle commission rate validation
-    if (name === "netCommissionRate") {
-      const numericValue = value.replace(/[^0-9.]/g, '');
-      const decimalParts = numericValue.split('.');
-      if (decimalParts.length > 1 && decimalParts[1].length > 2) {
-        return; // Don't allow more than 2 decimal places
-      }
-      setFormData(prev => ({ ...prev, [name]: numericValue }));
-      
-      // Validate commission rate is >= 0
-      if (numericValue && parseFloat(numericValue) < 0) {
-        setShowCommissionInvalid(true);
-      } else {
-        setShowCommissionInvalid(false);
-      }
-      return;
-    }
-
-    if (name === "mobile") {
-      const onlyNums = value.replace(/[^0-9]/g, '');
-      if (onlyNums !== value) { 
-        e.target.value = formData.mobile; 
-        return; 
-      }
-      if (value.length > 10) setShowMobileInvalid(true);
-      else setShowMobileInvalid(false);
+    // Special handling for PAN number
+    if (name === "pan_no") {
+      const upperCaseValue = value.toUpperCase();
+      setFormData({ ...formData, [name]: upperCaseValue });
+    } else {
+      setFormData({ ...formData, [name]: value });
     }
     
-    if (name === "phone") {
-      const phoneRegex = /^[\d+\-\s]{6,15}$/;
-      if (value && !phoneRegex.test(value)) setShowPhoneInvalid(true);
-      else setShowPhoneInvalid(false);
-    }
-    
-    setFormData(prev => ({ ...prev, [name]: value }));
+    // Clear error for this field if it exists
     if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: "" }));
+      setErrors({...errors, [name]: ''});
     }
-  }, [errors, formData.mobile, formData.panNo]);
-
-  const handleBlur = useCallback((e) => {
-    const { name, value } = e.target;
-    if (name === "mobile") {
-      if (value && value.length !== 10) setShowMobileInvalid(true);
-      else setShowMobileInvalid(false);
-    }
-    if (name === "email" && value) {
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) setShowEmailInvalid(true);
-      else setShowEmailInvalid(false);
-    }
-    if (name === "phone" && value) {
-      const phoneRegex = /^[\d+\-\s]{6,15}$/;
-      if (!phoneRegex.test(value)) setShowPhoneInvalid(true);
-      else setShowPhoneInvalid(false);
-    }
-    if (name === "panNo" && value) {
-      if (value.length < 10 || !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(value)) setShowPanNoInvalid(true);
-      else setShowPanNoInvalid(false);
-    }
-    if (name === "netCommissionRate" && value) {
-      if (parseFloat(value) < 0) setShowCommissionInvalid(true);
-      else setShowCommissionInvalid(false);
-    }
-  }, []);
-
-  const handleProjectSelect = (projectId) => {
-    setFormData(prev => ({ ...prev, project_id: projectId, broker_id: "" }));
-    setStep(2);
   };
 
-  const handleBrokerSelect = (brokerId) => {
-    setFormData(prev => ({ ...prev, broker_id: brokerId }));
+  const validateForm = () => {
+    const newErrors = {};
+    
+    if (!formData.name) {
+      newErrors.name = 'Name is required';
+    }
+    
+    if (formData.mobile && (formData.mobile.length !== 10 || !/^\d+$/.test(formData.mobile))) {
+      newErrors.mobile = 'Mobile must be exactly 10 digits';
+    }
+    
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = 'Invalid email format';
+    }
+    
+    if (formData.pan_no && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.pan_no)) {
+      newErrors.pan_no = 'Invalid PAN format (must be 10 characters: 5 letters, 4 numbers, 1 letter)';
+    }
+    
+    if (formData.net_commission_rate && parseFloat(formData.net_commission_rate) < 0) {
+      newErrors.net_commission_rate = 'Commission rate cannot be negative';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setSubmitting(true);
-    setErrors({});
     
-    const newErrors = {};
-    if (!formData.name) newErrors.name = "Name is required";
-    if (!formData.address) newErrors.address = "Address is required";
-    
-    if (formData.mobile && formData.mobile.length !== 10) {
-      setShowMobileInvalid(true);
-      newErrors.mobile = "Must be exactly 10 digits";
-    }
-    
-    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      setShowEmailInvalid(true);
-      newErrors.email = "Invalid email format";
-    }
-    
-    if (formData.phone && !/^[\d+\-\s]{6,15}$/.test(formData.phone)) {
-      setShowPhoneInvalid(true);
-      newErrors.phone = "Invalid phone number";
-    }
-    
-    if (formData.panNo && (formData.panNo.length < 10 || !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.panNo))) {
-      setShowPanNoInvalid(true);
-      newErrors.panNo = "Invalid PAN format (must be 10 characters: 5 letters, 4 numbers, 1 letter)";
-    }
-    
-    if (formData.netCommissionRate && parseFloat(formData.netCommissionRate) < 0) {
-      setShowCommissionInvalid(true);
-      newErrors.netCommissionRate = "Commission rate cannot be negative";
-    }
-    
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      setSubmitting(false);
+    if (!validateForm()) {
       return;
     }
-
+    
     try {
-      const response = await fetch(`http://localhost:5000/api/master/edit-broker/:broker__id/${formData.broker_id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: formData.name,
-          address: formData.address,
-          mobile: formData.mobile,
-          email: formData.email,
-          phone: formData.phone,
-          fax: formData.fax,
-          income_tax_ward_no: formData.incomeTaxWardNo,
-          dist_no: formData.disttNo,
-          pan_no: formData.panNo,
-          net_commission_rate: parseFloat(formData.netCommissionRate) || 0
-        }),
-      });
+      setLoading(true);
+      
+      // Prepare data to submit
+      const dataToSubmit = {
+        broker_id: parseInt(id),
+        name: formData.name,
+        address: formData.address,
+        mobile: formData.mobile,
+        email: formData.email,
+        phone: formData.phone,
+        fax: formData.fax,
+        income_tax_ward_no: formData.income_tax_ward_no,
+        dist_no: formData.dist_no,
+        pan_no: formData.pan_no,
+        net_commission_rate: formData.net_commission_rate ? parseFloat(formData.net_commission_rate) : 0
+      };
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        if (data.field) {
-          setErrors(prev => ({
-            ...prev,
-            [data.field]: data.message
-          }));
-          
-          if (inputRefs[data.field]?.current) {
-            inputRefs[data.field].current.focus();
-            inputRefs[data.field].current.select();
-          }
-        } else {
-          throw new Error(data.message || "Failed to update broker");
-        }
-      } else {
-        alert("Broker updated successfully!");
-        navigate(-1); // Go back to previous page
+      // Add project_ids if we have a project_id
+      if (formData.project_id) {
+        dataToSubmit.project_ids = [parseInt(formData.project_id)];
       }
-    } catch (error) {
-      setErrors(prev => ({ ...prev, submit: error.message }));
+
+      const response = await axios.put(`http://localhost:5000/api/master/edit-broker/${id}`, dataToSubmit);
+      
+      if (response.data.success) {
+        setShowSuccess(true);
+        setTimeout(() => {
+          setShowSuccess(false);
+          navigate('/masters/broker-list');
+        }, 2000);
+      } else {
+        setErrors({submit: response.data.message || 'Failed to update broker'});
+      }
+    } catch (err) {
+      console.error('Error updating broker:', err);
+      setErrors({submit: err.response?.data?.message || 'Failed to update broker'});
     } finally {
-      setSubmitting(false);
+      setLoading(false);
     }
   };
 
-  const renderStep = () => {
-    switch (step) {
-      case 1: // Select Project
-        return (
-          <div className="mb-4">
-            <label className="text-lg font-medium">
-              Project <span className="text-red-600">*</span>
-            </label>
-            {errors.project_id && <ErrorMessage error={errors.project_id} />}
-            <div className="relative mt-1">
-              <SearchableDropdown
-                options={projects}
-                value={formData.project_id}
-                onChange={(e) => handleProjectSelect(e.target.value)}
-                placeholder="Select Project"
-                loading={loading.projects}
-                error={errors.project_id}
-                disabled={submitting}
-                inputRef={inputRefs.project_id}
-              />
-            </div>
-          </div>
-        );
-
-      case 2: // Select Broker
-        return (
-          <div className="mb-4">
-            <label className="text-lg font-medium">
-              Broker <span className="text-red-600">*</span>
-            </label>
-            {errors.broker_id && <ErrorMessage error={errors.broker_id} />}
-            <div className="relative mt-1">
-              <SearchableDropdown
-                options={brokers}
-                value={formData.broker_id}
-                onChange={(e) => handleBrokerSelect(e.target.value)}
-                placeholder="Select Broker"
-                loading={loading.brokers}
-                error={errors.broker_id}
-                disabled={submitting || loading.brokers}
-                inputRef={inputRefs.broker_id}
-                displayKey="name"
-              />
-            </div>
-          </div>
-        );
-
-      case 3: // Edit Form
-        return (
-          <>
-            <div className="mb-4 p-2 bg-gray-100 rounded-md">
-              <p className="font-medium">Editing Broker: {formData.name}</p>
-              <p className="text-sm">Project: {projects.find(p => p.project_id === formData.project_id)?.project_name}</p>
-            </div>
-
-            {/* Name */}
-            <InputField
-              label="Name"
-              name="name"
-              type="text"
-              required={true}
-              placeholder="Enter broker name"
-              validationState={showPanNoInvalid}
-              validationError="Invalid PAN format (must be 10 characters: 5 letters, 4 numbers, 1 letter)"
-              value={formData.name}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              error={errors.name}
-              inputRef={inputRefs.name}
-              submitting={submitting}
-            />
-
-            {/* Address */}
-            <InputField
-              label="Address"
-              name="address"
-              type="text"
-              required={true}
-              placeholder="Enter address"
-              value={formData.address}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              error={errors.address}
-              inputRef={inputRefs.address}
-              submitting={submitting}
-            />
-
-            {/* Mobile */}
-            <InputField
-              label="Mobile"
-              name="mobile"
-              type="tel"
-              placeholder="Enter mobile number"
-              validationState={showMobileInvalid}
-              validationError="Must be exactly 10 digits"
-              value={formData.mobile}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              error={errors.mobile}
-              inputRef={inputRefs.mobile}
-              submitting={submitting}
-            />
-
-            {/* Email */}
-            <InputField
-              label="E-Mail"
-              name="email"
-              type="email"
-              placeholder="Enter email"
-              validationState={showEmailInvalid}
-              validationError="Invalid email format"
-              value={formData.email}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              error={errors.email}
-              inputRef={inputRefs.email}
-              submitting={submitting}
-            />
-
-            {/* Phone */}
-            <InputField
-              label="Phone"
-              name="phone"
-              type="tel"
-              placeholder="Enter phone number"
-              validationState={showPhoneInvalid}
-              validationError="Invalid phone number (only numbers, +, - and spaces allowed)"
-              value={formData.phone}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              error={errors.phone}
-              inputRef={inputRefs.phone}
-              submitting={submitting}
-            />
-
-            {/* Fax */}
-            <InputField
-              label="Fax"
-              name="fax"
-              type="tel"
-              placeholder="Enter fax number"
-              value={formData.fax}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              error={errors.fax}
-              inputRef={inputRefs.fax}
-              submitting={submitting}
-            />
-
-            {/* Income Tax Ward No. */}
-            <InputField
-              label="Income Tax Ward No."
-              name="incomeTaxWardNo"
-              type="text"
-              placeholder="Enter income tax ward no."
-              value={formData.incomeTaxWardNo}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              error={errors.incomeTaxWardNo}
-              inputRef={inputRefs.incomeTaxWardNo}
-              submitting={submitting}
-            />
-
-            {/* Distt No. */}
-            <InputField
-              label="Distt No."
-              name="disttNo"
-              type="text"
-              placeholder="Enter district no."
-              value={formData.disttNo}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              error={errors.disttNo}
-              inputRef={inputRefs.disttNo}
-              submitting={submitting}
-            />
-
-            {/* Pan No. */}
-            <InputField
-              label="Pan No."
-              name="panNo"
-              type="text"
-              placeholder="Enter PAN number"
-              validationState={showPanNoInvalid}
-              validationError="Invalid PAN format (must be 10 characters: 5 letters, 4 numbers, 1 letter)"
-              value={formData.panNo}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              error={errors.panNo}
-              inputRef={inputRefs.panNo}
-              submitting={submitting}
-            />
-
-            {/* Net Commission Rate */}
-            <InputField
-              label="Net Commission Rate (%)"
-              name="netCommissionRate"
-              type="number"
-              step="0.01"
-              placeholder="Enter commission rate"
-              validationState={showCommissionInvalid}
-              validationError="Commission rate cannot be negative"
-              value={formData.netCommissionRate}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              error={errors.netCommissionRate}
-              inputRef={inputRefs.netCommissionRate}
-              submitting={submitting}
-            />
-          </>
-        );
-
-      default:
-        return null;
-    }
-  };
+  if (brokerLoading || projectsLoading) {
+    return (
+      <div className="flex justify-center items-center h-screen bg-gray-800">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex justify-center items-center min-h-screen bg-[#272727]">
-      <form onSubmit={step === 3 ? handleSubmit : (e) => e.preventDefault()} className="relative w-[700px] h-auto bg-white p-10 rounded-2xl shadow-lg">
-        <h2 className="text-2xl font-extrabold text-black-800 text-center mb-2">
-          <span className="px-4 py-2">
-            {step === 1 ? "Select Project" : step === 2 ? "Select Broker" : "Edit Broker Details"}
-          </span>
-        </h2>
-        
-        {errors.fetch && (
-          <div className="mb-4 p-2 bg-red-100 text-red-700 rounded-md">
-            {errors.fetch}
+    <div className="min-h-screen bg-gray-800 p-6">
+      <div className="max-w-2xl mx-auto">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold text-white">Edit Broker</h1>
+          <button
+            onClick={() => navigate("/masters/broker-list")}
+            className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500"
+          >
+            Back to Brokers
+          </button>
+        </div>
+      
+        <div className="bg-white p-6 rounded-xl shadow-lg">
+          <div className="mb-4 p-3 bg-gray-100 rounded-md">
+            <p className="font-medium">Editing Broker: {formData.name}</p>
+            {formData.project_id && (
+              <p className="text-sm text-gray-600">
+                Project: {projects.find(p => p.project_id === parseInt(formData.project_id))?.project_name || 'Unknown Project'}
+              </p>
+            )}
           </div>
-        )}
-
-        <div className="grid grid-cols-1 gap-2">
-          {renderStep()}
-
-          {errors.submit && (
-            <div className="mt-2 p-2 bg-red-100 text-red-700 rounded-md text-center">
-              {errors.submit.startsWith("<!DOCTYPE html>") 
-                ? "Server error occurred" 
-                : errors.submit}
+          
+          {errors.fetch && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+              {errors.fetch}
             </div>
           )}
-
-          <div className="flex justify-between mt-6">
-            {step > 1 && (
-              <button
-                type="button"
-                className="w-1/3 p-3 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition"
-                onClick={() => setStep(step - 1)}
-                disabled={submitting}
+          
+          {errors.submit && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+              {errors.submit}
+            </div>
+          )}
+          
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Project Selection */}
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Project
+              </label>
+              <select
+                name="project_id"
+                value={formData.project_id}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={loading}
               >
-                Back
-              </button>
-            )}
+                <option value="">Select Project</option>
+                {projects.map(project => (
+                  <option key={project.project_id} value={project.project_id}>
+                    {project.project_name}
+                  </option>
+                ))}
+              </select>
+            </div>
             
-            {step < 3 ? (
-              <button
-                type="button"
-                className={`w-1/3 p-3 text-white rounded-md transition ml-auto ${
-                  (step === 1 && !formData.project_id) || 
-                  (step === 2 && !formData.broker_id) ? 
-                  "bg-gray-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"
-                }`}
-                onClick={() => setStep(step + 1)}
-                disabled={
-                  submitting || 
-                  (step === 1 && !formData.project_id) || 
-                  (step === 2 && !formData.broker_id)
-                }
-              >
-                {step === 1 ? "Select Broker" : "Continue"}
-              </button>
-            ) : (
+            {/* Broker Name */}
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Name <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                name="name"
+                value={formData.name}
+                onChange={handleInputChange}
+                className={`w-full px-3 py-2 border ${
+                  errors.name
+                    ? "border-red-500 focus:ring-red-500"
+                    : "border-gray-300 focus:ring-blue-500"
+                } rounded-md focus:outline-none focus:ring-2`}
+                disabled={loading}
+              />
+              {errors.name && (
+                <p className="text-red-500 text-xs mt-1">{errors.name}</p>
+              )}
+            </div>
+            
+            {/* Address */}
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Address
+              </label>
+              <textarea
+                name="address"
+                value={formData.address}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                rows="3"
+                disabled={loading}
+              />
+            </div>
+            
+            {/* Mobile */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Mobile
+              </label>
+              <input
+                type="text"
+                name="mobile"
+                value={formData.mobile}
+                onChange={handleInputChange}
+                className={`w-full px-3 py-2 border ${
+                  errors.mobile
+                    ? "border-red-500 focus:ring-red-500"
+                    : "border-gray-300 focus:ring-blue-500"
+                } rounded-md focus:outline-none focus:ring-2`}
+                disabled={loading}
+              />
+              {errors.mobile && (
+                <p className="text-red-500 text-xs mt-1">{errors.mobile}</p>
+              )}
+            </div>
+            
+            {/* Email */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Email
+              </label>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleInputChange}
+                className={`w-full px-3 py-2 border ${
+                  errors.email
+                    ? "border-red-500 focus:ring-red-500"
+                    : "border-gray-300 focus:ring-blue-500"
+                } rounded-md focus:outline-none focus:ring-2`}
+                disabled={loading}
+              />
+              {errors.email && (
+                <p className="text-red-500 text-xs mt-1">{errors.email}</p>
+              )}
+            </div>
+            
+            {/* Phone */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Phone
+              </label>
+              <input
+                type="text"
+                name="phone"
+                value={formData.phone}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={loading}
+              />
+            </div>
+            
+            {/* Fax */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Fax
+              </label>
+              <input
+                type="text"
+                name="fax"
+                value={formData.fax}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={loading}
+              />
+            </div>
+            
+            {/* Income Tax Ward No */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Income Tax Ward No
+              </label>
+              <input
+                type="text"
+                name="income_tax_ward_no"
+                value={formData.income_tax_ward_no}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={loading}
+              />
+            </div>
+            
+            {/* District No */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Dist No
+              </label>
+              <input
+                type="text"
+                name="dist_no"
+                value={formData.dist_no}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={loading}
+              />
+            </div>
+            
+            {/* PAN No */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                PAN No
+              </label>
+              <input
+                type="text"
+                name="pan_no"
+                value={formData.pan_no}
+                onChange={handleInputChange}
+                className={`w-full px-3 py-2 border ${
+                  errors.pan_no
+                    ? "border-red-500 focus:ring-red-500"
+                    : "border-gray-300 focus:ring-blue-500"
+                } rounded-md focus:outline-none focus:ring-2`}
+                disabled={loading}
+              />
+              {errors.pan_no && (
+                <p className="text-red-500 text-xs mt-1">{errors.pan_no}</p>
+              )}
+            </div>
+            
+            {/* Net Commission Rate */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Net Commission Rate (%)
+              </label>
+              <input
+                type="number"
+                name="net_commission_rate"
+                value={formData.net_commission_rate}
+                onChange={handleInputChange}
+                className={`w-full px-3 py-2 border ${
+                  errors.net_commission_rate
+                    ? "border-red-500 focus:ring-red-500"
+                    : "border-gray-300 focus:ring-blue-500"
+                } rounded-md focus:outline-none focus:ring-2`}
+                step="0.01"
+                disabled={loading}
+              />
+              {errors.net_commission_rate && (
+                <p className="text-red-500 text-xs mt-1">{errors.net_commission_rate}</p>
+              )}
+            </div>
+            
+            {/* Submit Button */}
+            <div className="md:col-span-2 flex justify-center pt-4">
               <button
                 type="submit"
-                className="w-1/3 p-3 bg-green-600 text-white rounded-md hover:bg-green-700 transition ml-auto"
-                disabled={
-                  submitting ||
-                  showMobileInvalid ||
-                  showEmailInvalid ||
-                  showPhoneInvalid ||
-                  showPanNoInvalid ||
-                  showCommissionInvalid ||
-                  !formData.name ||
-                  !formData.address
-                }
+                disabled={loading}
+                className={`w-full p-3 text-white rounded-md transition ${
+                  loading
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-blue-600 hover:bg-blue-700"
+                }`}
               >
-                {submitting ? "Updating..." : "Update Broker"}
+                {loading ? (
+                  <span className="flex items-center justify-center">
+                    <svg
+                      className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    Processing...
+                  </span>
+                ) : (
+                  "Update Broker"
+                )}
               </button>
-            )}
-          </div>
+            </div>
+          </form>
         </div>
-      </form>
+        
+        {/* Success Modal */}
+        {showSuccess && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white p-8 rounded-lg max-w-md w-full text-center">
+              <div className="flex justify-center mb-4">
+                <svg 
+                  className="h-12 w-12 text-green-500" 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  fill="none" 
+                  viewBox="0 0 24 24" 
+                  stroke="currentColor"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth={2} 
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" 
+                  />
+                </svg>
+              </div>
+              <h3 className="text-2xl font-bold text-gray-800 mb-2">Success!</h3>
+              <p className="text-gray-600 mb-6">
+                Broker updated successfully.
+              </p>
+              <div className="w-full bg-gray-200 rounded-full h-2.5">
+                <div className="bg-green-500 h-2.5 rounded-full animate-[progress_2s_ease-in-out]" style={{ width: '100%' }}></div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

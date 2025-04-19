@@ -355,30 +355,6 @@ function AddNewPlan() {
           </div>
         )}
 
-        {/* Existing Installment Plans */}
-        {installmentPlans.length > 0 && (
-          <div className="mb-6">
-            <h3 className="text-lg font-semibold mb-3">Existing Installment Plans</h3>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Plan Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Number of Installments</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {installmentPlans.map((plan) => (
-                    <tr key={plan.plan_name}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{plan.plan_name}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{plan.no_of_installments}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="mb-6">

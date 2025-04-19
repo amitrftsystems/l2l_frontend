@@ -166,8 +166,8 @@ export default function Navbar() {
             {isMastersOpen && (
               <ul className="absolute left-0 mt-2 w-48 bg-[#272727] text-white rounded-lg shadow-lg">
                 {[
-                  { name: "Plans", link: "/masters/add-new-plan" },
-                  { name: "Projects/Locations", link: "/masters/add-project" },
+                  { name: "Plans", link: "/masters/plans" },
+                  { name: "Projects/Locations", link: "/masters/projects" },
                   { name: "PLC", link: "/masters/add-new-plc" },
                   { name: "Unit Size", link: "/masters/add-unit-size" },
                   { name: "Stock", link: "/masters/stock" },

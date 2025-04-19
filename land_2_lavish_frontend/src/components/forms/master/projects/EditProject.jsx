@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import Select from "react-select";
 import { CheckCircle } from "lucide-react";
 
 const EditProject = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
     project_name: "",
@@ -289,232 +290,246 @@ const EditProject = () => {
   };
 
   return (
-    <div className="flex justify-center items-center min-h-screen bg-gray-800 p-30">
-      <div className="bg-white p-6 rounded-xl shadow-lg w-full max-w-2xl relative border border-gray-200">
-        <h2 className="text-2xl font-bold text-center text-black mb-2">
-          Edit Project
-        </h2>
-        <div className="mb-4 text-center">
-          <p className="text-sm text-gray-600">
-            Fields marked by <span className="text-red-500 font-medium">*</span>{" "}
-            are mandatory
-          </p>
+    <div className="min-h-screen bg-gray-800 p-6">
+      <div className="max-w-2xl mx-auto">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold text-white">Edit Project</h1>
+          <button
+            onClick={() => navigate("/masters/projects")}
+            className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500"
+          >
+            Back to Projects
+          </button>
         </div>
-
-        <form
-          onSubmit={handleSubmit}
-          className="grid grid-cols-1 md:grid-cols-2 gap-4"
-        >
-          {/* Project Name */}
-          <div className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700">
-              Project <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              name="project_name"
-              value={formData.project_name}
-              onChange={handleChange}
-              onBlur={() => handleBlur("project_name")}
-              className={`w-full px-3 py-2 border ${
-                errors.project_name && touched.project_name
-                  ? "border-red-500 focus:ring-red-500"
-                  : "border-black focus:ring-green-500"
-              } rounded-md focus:outline-none focus:ring-2`}
-            />
-            {errors.project_name && touched.project_name && (
-              <p className="text-red-500 text-xs mt-1 flex items-center">
-                {errors.project_name}
-              </p>
-            )}
+      
+        <div className="bg-white p-6 rounded-xl shadow-lg w-full relative border border-gray-200">
+          <div className="mb-4 text-center">
+            <p className="text-sm text-gray-600">
+              Fields marked by <span className="text-red-500 font-medium">*</span>{" "}
+              are mandatory
+            </p>
           </div>
 
-          {/* Company Name */}
-          <div className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700">
-              Company Name <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              name="company_name"
-              value={formData.company_name}
-              onChange={handleChange}
-              onBlur={() => handleBlur("company_name")}
-              className={`w-full px-3 py-2 border ${
-                errors.company_name && touched.company_name
-                  ? "border-red-500 focus:ring-red-500"
-                  : "border-black focus:ring-green-500"
-              } rounded-md focus:outline-none focus:ring-2`}
-            />
-            {errors.company_name && touched.company_name && (
-              <p className="text-red-500 text-xs mt-1 flex items-center">
-                {errors.company_name}
-              </p>
-            )}
-          </div>
-
-          {/* Address */}
-          <div className="md:col-span-2 space-y-1">
-            <label className="block text-sm font-medium text-gray-700">
-              Address <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              name="address"
-              value={formData.address}
-              onChange={handleChange}
-              onBlur={() => handleBlur("address")}
-              className={`w-full px-3 py-2 border ${
-                errors.address && touched.address
-                  ? "border-red-500 focus:ring-red-500"
-                  : "border-black focus:ring-green-500"
-              } rounded-md focus:outline-none focus:ring-2`}
-            />
-            {errors.address && touched.address && (
-              <p className="text-red-500 text-xs mt-1 flex items-center">
-                {errors.address}
-              </p>
-            )}
-          </div>
-
-          {/* Landmark */}
-          <div className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700">
-              Landmark
-            </label>
-            <input
-              type="text"
-              name="landmark"
-              value={formData.landmark}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-black rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-            />
-          </div>
-
-          {/* Installment Dropdown */}
-          <div className="space-y-1 w-full">
-            <label className="block text-sm font-medium text-gray-700">
-              Installment Plan Name <span className="text-red-500">*</span>
-            </label>
-            <Select
-              options={installmentOptions}
-              styles={customStyles}
-              placeholder="Select installment..."
-              value={installmentOptions.find(
-                (option) => option.value === formData.plan
-              )}
-              onChange={(selectedOption) => {
-                setFormData({
-                  ...formData,
-                  plan: selectedOption?.value || "",
-                });
-                if (errors.plan) {
-                  setErrors((prev) => ({ ...prev, plan: "" }));
-                }
-              }}
-              onBlur={() => handleBlur("plan")}
-              isClearable
-              isSearchable
-              menuPlacement="bottom"
-              className="react-select-container"
-              classNamePrefix="react-select"
-            />
-            {errors.plan && touched.plan && (
-              <p className="text-red-500 text-xs mt-1 flex items-center">
-                 {errors.plan}
-              </p>
-            )}
-          </div>
-
-          {/* Sign Image */}
-          <div className="md:col-span-2 space-y-1">
-            <label className="block text-sm font-medium text-gray-700">
-              Sign Image
-            </label>
-            <div className="flex items-center">
+          <form
+            onSubmit={handleSubmit}
+            className="grid grid-cols-1 md:grid-cols-2 gap-4"
+          >
+            {/* Project Name */}
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700">
+                Project <span className="text-red-500">*</span>
+              </label>
               <input
-                type="file"
-                name="sign_image"
+                type="text"
+                name="project_name"
+                value={formData.project_name}
                 onChange={handleChange}
-                accept="image/*"
-                className="w-full px-3 py-2 border border-black rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                onBlur={() => handleBlur("project_name")}
+                className={`w-full px-3 py-2 border ${
+                  errors.project_name && touched.project_name
+                    ? "border-red-500 focus:ring-red-500"
+                    : "border-gray-300 focus:ring-blue-500"
+                } rounded-md focus:outline-none focus:ring-2`}
+              />
+              {errors.project_name && touched.project_name && (
+                <p className="text-red-500 text-xs mt-1 flex items-center">
+                  {errors.project_name}
+                </p>
+              )}
+            </div>
+
+            {/* Company Name */}
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700">
+                Company Name <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                name="company_name"
+                value={formData.company_name}
+                onChange={handleChange}
+                onBlur={() => handleBlur("company_name")}
+                className={`w-full px-3 py-2 border ${
+                  errors.company_name && touched.company_name
+                    ? "border-red-500 focus:ring-red-500"
+                    : "border-gray-300 focus:ring-blue-500"
+                } rounded-md focus:outline-none focus:ring-2`}
+              />
+              {errors.company_name && touched.company_name && (
+                <p className="text-red-500 text-xs mt-1 flex items-center">
+                  {errors.company_name}
+                </p>
+              )}
+            </div>
+
+            {/* Address */}
+            <div className="md:col-span-2 space-y-1">
+              <label className="block text-sm font-medium text-gray-700">
+                Address <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                name="address"
+                value={formData.address}
+                onChange={handleChange}
+                onBlur={() => handleBlur("address")}
+                className={`w-full px-3 py-2 border ${
+                  errors.address && touched.address
+                    ? "border-red-500 focus:ring-red-500"
+                    : "border-gray-300 focus:ring-blue-500"
+                } rounded-md focus:outline-none focus:ring-2`}
+              />
+              {errors.address && touched.address && (
+                <p className="text-red-500 text-xs mt-1 flex items-center">
+                  {errors.address}
+                </p>
+              )}
+            </div>
+
+            {/* Landmark */}
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700">
+                Landmark
+              </label>
+              <input
+                type="text"
+                name="landmark"
+                value={formData.landmark}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-            {selectedFileName && (
-              <p className="text-sm text-gray-600 mt-1">
-                Selected file: {selectedFileName}
-              </p>
-            )}
-            {currentSignImage && !selectedFileName && (
-              <p className="text-sm text-gray-600 mt-1">
-                Current image: {currentSignImage}
-              </p>
-            )}
-          </div>
 
-          {/* Submit Button */}
-          <div className="md:col-span-2 flex justify-center pt-2">
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className={`w-1/3 p-3 text-white rounded-md transition ${
-                isSubmitting
-                  ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-green-600 hover:bg-green-700"
-              }`}
-            >
-              {isSubmitting ? (
-                <span className="flex items-center justify-center">
-                  <svg
-                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                  Processing...
-                </span>
-              ) : (
-                "Update Project"
+            {/* Installment Dropdown */}
+            <div className="space-y-1 w-full">
+              <label className="block text-sm font-medium text-gray-700">
+                Installment Plan Name <span className="text-red-500">*</span>
+              </label>
+              <Select
+                options={installmentOptions}
+                styles={customStyles}
+                placeholder="Select installment..."
+                value={installmentOptions.find(
+                  (option) => option.value === formData.plan
+                )}
+                onChange={(selectedOption) => {
+                  setFormData({
+                    ...formData,
+                    plan: selectedOption?.value || "",
+                  });
+                  if (errors.plan) {
+                    setErrors((prev) => ({ ...prev, plan: "" }));
+                  }
+                }}
+                onBlur={() => handleBlur("plan")}
+                isClearable
+                isSearchable
+                menuPlacement="bottom"
+                className="react-select-container"
+                classNamePrefix="react-select"
+              />
+              {errors.plan && touched.plan && (
+                <p className="text-red-500 text-xs mt-1 flex items-center">
+                   {errors.plan}
+                </p>
               )}
-            </button>
-          </div>
-        </form>
-      </div>
+            </div>
 
-      {/* Success Modal */}
-      {showSuccess && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-8 rounded-lg max-w-md w-full text-center">
-            <div className="flex justify-center mb-4">
-              <CheckCircle className="text-green-500 h-12 w-12" />
+            {/* Sign Image */}
+            <div className="md:col-span-2 space-y-1">
+              <label className="block text-sm font-medium text-gray-700">
+                Sign Image
+              </label>
+              <div className="flex items-center">
+                <input
+                  type="file"
+                  name="sign_image"
+                  onChange={handleChange}
+                  accept="image/*"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              {selectedFileName && (
+                <p className="text-sm text-gray-600 mt-1">
+                  Selected file: {selectedFileName}
+                </p>
+              )}
+              {currentSignImage && !selectedFileName && (
+                <p className="text-sm text-gray-600 mt-1">
+                  Current image: {currentSignImage}
+                </p>
+              )}
             </div>
-            <h3 className="text-2xl font-bold text-gray-800 mb-2">Success!</h3>
-            <p className="text-gray-600 mb-6">
-              Project updated successfully.
-            </p>
-            <div className="w-full bg-gray-200 rounded-full h-2.5">
-              <div
-                className="bg-green-500 h-2.5 rounded-full animate-progress"
-                style={{ animationDuration: "2s" }}
-              ></div>
+
+            {/* Submit Button */}
+            <div className="md:col-span-2 flex justify-center pt-4">
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className={`w-full p-3 text-white rounded-md transition ${
+                  isSubmitting
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-blue-600 hover:bg-blue-700"
+                }`}
+              >
+                {isSubmitting ? (
+                  <span className="flex items-center justify-center">
+                    <svg
+                      className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    Processing...
+                  </span>
+                ) : (
+                  "Update Project"
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+
+        {/* Success Modal */}
+        {showSuccess && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white p-8 rounded-lg max-w-md w-full text-center">
+              <div className="flex justify-center mb-4">
+                <CheckCircle className="text-blue-500 h-12 w-12" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-800 mb-2">Success!</h3>
+              <p className="text-gray-600 mb-6">
+                Project updated successfully.
+              </p>
+              <div className="flex justify-center">
+                <button
+                  onClick={() => {
+                    setShowSuccess(false);
+                    navigate("/masters/projects");
+                  }}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                >
+                  Back to Projects
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };

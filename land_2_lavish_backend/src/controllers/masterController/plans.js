@@ -135,12 +135,13 @@ export const getInstallmentPlanByName = async (req, res) => {
 export const updateInstallmentPlan = async (req, res) => {
     try {
         const { plan_name } = req.params;
-        const { no_of_installments } = req.body;
+        const { no_of_installments, installment_details } = req.body;
 
         if (!plan_name) {
             return res.status(400).json({ success: false, message: "Plan name is required." });
         }
 
+        // First update the plan
         const updatedPlan = await prisma.installmentPlan.update({
             where: { plan_name },
             data: { 
@@ -152,7 +153,71 @@ export const updateInstallmentPlan = async (req, res) => {
             return res.status(404).json({ success: false, message: "Installment plan not found." });
         }
 
-        res.status(200).json({ success: true, data: updatedPlan });  
+        // If installment details are provided, update them
+        if (installment_details && Array.isArray(installment_details)) {
+            // First delete existing details
+            await prisma.installmentDetails.deleteMany({
+                where: { plan_name }
+            });
+
+            // Then create new details
+            const details = await Promise.all(
+                installment_details.map(detail => {
+                    let finalDueDate = new Date(detail.due_date);
+                    if (!(finalDueDate instanceof Date) || isNaN(finalDueDate)) {
+                        const days = detail.due_after_days || 0;
+                        finalDueDate = new Date();
+                        finalDueDate.setDate(finalDueDate.getDate() + days);
+                    }
+
+                    // Handle null/undefined values for amount and percentage
+                    let amount = detail.amount === null || detail.amount === undefined ? null : detail.amount;
+                    let percentage = detail.percentage === null || detail.percentage === undefined ? null : detail.percentage;
+
+                    // Set explicitly to 0 only when needed
+                    if (amount === null && percentage !== null) {
+                        amount = 0;
+                    } else if (percentage === null && amount !== null) {
+                        percentage = 0;
+                    }
+
+                    return prisma.installmentDetails.create({
+                        data: {
+                            installment_number: detail.installment_number,
+                            amount: amount,
+                            percentage: percentage,
+                            due_after_days: detail.due_after_days || 0,
+                            due_date: finalDueDate,
+                            installment_plan: {
+                                connect: {
+                                    plan_name: plan_name
+                                }
+                            }
+                        }
+                    });
+                })
+            );
+
+            // Get the updated plan with details
+            const updatedPlanWithDetails = await prisma.installmentPlan.findUnique({
+                where: { plan_name },
+                include: {
+                    installment_details: true
+                }
+            });
+
+            return res.status(200).json({ 
+                success: true, 
+                data: updatedPlanWithDetails,
+                message: "Installment plan and details updated successfully"
+            });
+        }
+
+        res.status(200).json({ 
+            success: true, 
+            data: updatedPlan,
+            message: "Installment plan updated successfully"
+        });  
         
     } catch (error) {
         console.error("Error updating installment plan:", error);
@@ -165,25 +230,44 @@ export const deleteInstallmentPlan = async (req, res) => {
         const { plan_name } = req.params;
 
         if (!plan_name) {
-            return res.status(400).json({ success: false, message: "Plan name is required." });
+            return res.status(400).json({
+                success: false,
+                message: "Plan name is required"
+            });
         }
-        
-        // First delete all installment details associated with the plan
+
+        // First, check if the plan exists
+        const existingPlan = await prisma.installmentPlan.findUnique({
+            where: { plan_name }
+        });
+
+        if (!existingPlan) {
+            return res.status(404).json({
+                success: false,
+                message: "Installment plan not found"
+            });
+        }
+
+        // First delete all related installment details
         await prisma.installmentDetails.deleteMany({
             where: { plan_name }
         });
 
-        // Then delete the plan
-        const deletedPlan = await prisma.installmentPlan.delete({   
+        // Then delete the installment plan
+        await prisma.installmentPlan.delete({
             where: { plan_name }
         });
 
-        if (!deletedPlan) {
-            return res.status(404).json({ success: false, message: "Installment plan not found." });
-        }
-        res.status(200).json({ success: true, message: "Installment plan deleted successfully." });
+        return res.status(200).json({
+            success: true,
+            message: "Installment plan and related details deleted successfully"
+        });
     } catch (error) {
-        console.error("Error deleting installment plan:", error);
-        res.status(500).json({ success: false, message: error.message });
+        console.error("Error in deleteInstallmentPlan:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Error deleting installment plan",
+            error: error.message
+        });
     }
-}
+};
